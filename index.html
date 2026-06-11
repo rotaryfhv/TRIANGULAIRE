@@ -74,7 +74,7 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        // Fonction magique pour transformer les liens de partage Google Drive en images affichables
+        // Conversion des liens de fichiers Google Drive en image directe
         function convertDriveUrl(url) {
             if (!url || url.indexOf('drive.google.com') === -1) return url;
             var match = url.match(/\/file\/d\/([^\/]+)/);
@@ -84,10 +84,9 @@
             return url;
         }
 
-        // Nettoyage intelligent des heures et formats Google Sheets
         function cleanValue(cell) {
             if (!cell) return '';
-            if (cell.f) return cell.f; // Donne la priorité au texte affiché dans la case (ex: "10:00")
+            if (cell.f) return cell.f; 
             if (cell.v !== null && cell.v !== undefined) {
                 var valStr = String(cell.v);
                 if (valStr.indexOf('Date(') !== -1) {
@@ -103,68 +102,65 @@
             return '';
         }
 
+        async function fetchSheetByName(sheetName) {
+            var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(sheetName);
+            var response = await fetch(url);
+            var text = await response.text();
+            var match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
+            if (!match) throw new Error("Format Google invalide pour " + sheetName);
+            return JSON.parse(match[1]).table.rows;
+        }
+
         async function loadAllData() {
             try {
-                // 1. CHARGEMENT DE L'ONGLET PARTICIPANTS (gid=0)
-                var resPart = await fetch('https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&gid=0');
-                var textPart = await resPart.text();
-                var matchPart = textPart.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
-                var jsonPart = JSON.parse(matchPart[1]);
-                var rowsPart = jsonPart.table.rows;
-                
+                // 1. CHARGEMENT DES PARTICIPANTS
+                var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
-                // Ordre exact de votre capture d'écran 1
                 var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
-                
+
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
-                    if (row && row.c && r > 0) { // On ignore la ligne d'en-tête (r=0)
+                    if (row && row.c) {
+                        var col0 = cleanValue(row.c[0]);
+                        // Éviter la ligne d'en-tête du tableau
+                        if (col0 === 'Club' || col0 === '') continue;
+
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
                             var val = cleanValue(row.c[c]);
                             if (keysPart[c] === 'Photo') val = convertDriveUrl(val);
                             item[keysPart[c]] = val;
                         }
-                        if (item.Nom || item.Prénom) dataParticipants.push(item);
+                        dataParticipants.push(item);
                     }
                 }
 
-                // 2. CHARGEMENT DE L'ONGLET PROGRAMME + URGENCE COMPILÉ (gid=1736856417)
-                var resProg = await fetch('https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&gid=1736856417');
-                var textProg = await resProg.text();
-                var matchProg = textProg.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
-                var jsonProg = JSON.parse(matchProg[1]);
-                var rowsProg = jsonProg.table.rows;
-
+                // 2. CHARGEMENT DU PROGRAMME (Et sécurité Urgences)
+                var rowsProg = await fetchSheetByName('Programme');
                 dataProgramme = [];
                 dataUrgence = [];
-                
                 var enZoneUrgence = false;
 
                 for (var r = 0; r < rowsProg.length; r++) {
                     var row = rowsProg[r];
                     if (!row || !row.c) continue;
-                    
+
                     var colA = cleanValue(row.c[0]);
                     var colB = cleanValue(row.c[1]);
 
-                    // Détection du tableau d'urgence situé au fond de l'onglet Programme (Capture 6)
-                    if (colA === 'Nom' && colB === 'Numéro') {
-                        enZoneUrgence = true;
-                        continue;
-                    }
-                    if (colA.indexOf('BERNARD') !== -1 || colA.indexOf('MARIE-CLAIRE') !== -1) {
+                    if (colA === 'Heure' || colA === 'Francais') continue;
+
+                    // Détection de la zone des numéros d'urgence en bas
+                    if (colA === 'Nom' || colA.indexOf('BERNARD') !== -1 || colA.indexOf('MARIE-CLAIRE') !== -1) {
                         enZoneUrgence = true;
                     }
 
                     if (enZoneUrgence) {
-                        // On extrait les contacts d'urgence
-                        if (colA) {
+                        if (colA && colA !== 'Nom') {
                             dataUrgence.push({ Nom: colA, Numéro: colB });
                         }
                     } else {
-                        // On extrait le programme classique (On ignore la ligne d'en-tête globale)
-                        if (r > 0 && (colA || colB)) {
+                        if (colA || colB) {
                             dataProgramme.push({
                                 Heure: colA,
                                 Lieu_FR: colB,
@@ -176,7 +172,7 @@
                     }
                 }
 
-                // Affichage final des éléments
+                // Rendu visuel
                 renderParticipants();
                 renderProgramme();
                 renderUrgence();
@@ -184,7 +180,7 @@
                 document.getElementById('loading').style.display = 'none';
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = "Erreur de synchronisation. Vérifiez l'accès public du Sheet.";
+                document.getElementById('loading').innerText = "Erreur d'accès aux onglets. Vérifiez leurs noms.";
             }
         }
 
@@ -225,26 +221,29 @@
             var div = document.createElement('div');
             div.className = "bg-white p-3 rounded-lg shadow-sm border border-gray-100 my-2 flex items-center gap-3";
             
-            // Avatar SVG de secours si pas de photo
-            var photoHtml = '<div class="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm flex-shrink-0">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</div>';
+            // Avatar de secours neutre en SVG
+            var avatarSecours = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="%23cbd5e1"/><text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="%2364748b" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
             
-            // Si une URL de photo convertie existe
+            var photoHtml = '<img src="' + avatarSecours + '" class="w-12 h-12 rounded-full object-cover bg-gray-100 flex-shrink-0">';
             if (p.Photo && p.Photo.indexOf('http') !== -1) {
-                photoHtml = '<img src="' + p.Photo + '" class="w-12 h-12 rounded-full object-cover bg-gray-100 flex-shrink-0" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'48\\\' height=\\\'48\\\'><circle cx=\\\'24\\\' cy=\\\'24\\\' r=\\\'24\\\' fill=\\\'%23cbd5e1\\\'/><text x=\\\'24\\\' y=\\\'28\\\' font-size=\\\'16\\\' font-family=\\\'sans-serif\\\' font-weight=\\\'bold\\\' fill=\\\'%2364748b\\\' text-anchor=\\\'middle\\\'>' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>\'">';
+                photoHtml = '<img src="' + p.Photo + '" class="w-12 h-12 rounded-full object-cover bg-gray-200 flex-shrink-0" onerror="this.src=\'' + avatarSecours + '\'">';
             }
             
             var detailsSub = [];
             if (p.Profession) detailsSub.push(p.Profession);
-            if (p.Role) detailsSub.push('<span class="text-amber-600 font-medium">' + p.Role + '</span>');
+            if (p.Role && p.Role !== 'Participant') detailsSub.push('<span class="text-amber-600 font-semibold">' + p.Role + '</span>');
             if (p.Conjoint) detailsSub.push('👫 ' + p.Conjoint);
+            
+            var phoneTextHtml = p.Tél ? '<div class="text-[11px] text-emerald-600 font-mono mt-0.5">📞 ' + p.Tél + '</div>' : '';
             
             div.innerHTML = photoHtml +
                 '<div class="flex-1 min-w-0">' +
-                    '<div class="font-bold text-gray-900 text-sm truncate">' + (p.Nom || '') + ' ' + (p.Prénom || '') + '</div>' +
-                    '<div class="text-xs text-gray-500 truncate">' + (detailsSub.join(' • ') || 'Participant') + '</div>' +
-                    '<div class="text-[10px] text-blue-800 font-bold mt-0.5 uppercase tracking-wide">' + (p.Club || '') + '</div>' +
+                    '<div class="font-bold text-gray-950 text-sm truncate">' + (p.Nom || '') + ' ' + (p.Prénom || '') + '</div>' +
+                    '<div class="text-xs text-gray-500 truncate">' + (detailsSub.join(' • ') || 'Membre') + '</div>' +
+                    phoneTextHtml +
+                    '<div class="text-[9px] text-blue-900 font-bold mt-0.5 uppercase tracking-wider">' + (p.Club || '') + '</div>' +
                 '</div>' +
-                (p.Tél ? '<a href="tel:' + p.Tél + '" class="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full text-xs flex-shrink-0">📞</a>' : '');
+                (p.Tél ? '<a href="tel:' + p.Tél + '" class="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full text-xs flex-shrink-0 ml-1">🤙</a>' : '');
             return div;
         }
 
@@ -263,12 +262,11 @@
             for (var i = 0; i < dataProgramme.length; i++) {
                 (function(index) {
                     var item = dataProgramme[index];
+                    var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
                     
-                    // Si la ligne correspond à un titre de journée (ex: "dimanche 12 d...")
-                    var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 5);
                     if (estTitreJour) {
                         var dayHeader = document.createElement('div');
-                        dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-2 first:mt-0";
+                        dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
                         dayHeader.innerText = item.Heure;
                         container.appendChild(dayHeader);
                         return;
@@ -281,7 +279,7 @@
                     var div = document.createElement('div');
                     div.className = "bg-white border-b border-gray-100 p-4";
                     
-                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Voir</span>' : '';
+                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
                     
                     div.innerHTML = '<div class="flex justify-between items-center ' + (desc ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
                             '<div class="flex items-baseline gap-3 min-w-0">' +
