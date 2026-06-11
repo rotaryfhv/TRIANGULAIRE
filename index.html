@@ -74,38 +74,55 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        async function fetchSheetTab(tabName) {
-            var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(tabName);
+        // Fonction de nettoyage des valeurs brutes de Google Sheets (gère le texte, le format Date() ou le nul)
+        function cleanValue(cell) {
+            if (!cell) return '';
+            if (cell.f) return cell.f; // Renvoie la valeur formatée affichée à l'écran (Ex: "10:00" ou "dimanche 12")
+            if (cell.v !== null && cell.v !== undefined) {
+                var valStr = String(cell.v);
+                if (valStr.indexOf('Date(') !== -1) {
+                    // Si c'est un format Date standard de Google Sheets, on extrait les chiffres principaux
+                    var matches = valStr.match(/\d+/g);
+                    if (matches && matches.length >= 4) {
+                        // Retourne Heure:Minutes (ex: 10:00)
+                        var hrs = matches[3].length === 1 ? '0' + matches[3] : matches[3];
+                        var mins = matches[4] ? (matches[4].length === 1 ? '0' + matches[4] : matches[4]) : '00';
+                        return hrs + ':' + mins;
+                    }
+                }
+                return cell.v;
+            }
+            return '';
+        }
+
+        async function fetchSheetTab(tabIndex, expectedKeys) {
+            // Utilisation des index d'onglets (gid) pour contourner les erreurs de casse de nom d'onglet
+            var gid = '0'; // Par défaut Participants
+            if (tabIndex === 1) gid = '1736856417'; // Programme
+            if (tabIndex === 2) gid = '1515091771'; // Urgence (à adapter si besoin, ou reste sur le nom)
+            
+            var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&gid=' + gid;
+            if (tabIndex === 2) {
+                // Si l'onglet urgence n'est pas le 3ème, on repasse par son nom par sécurité
+                url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&sheet=Urgence';
+            }
+
             var response = await fetch(url);
             var text = await response.text();
-            
             var match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
-            if (!match) {
-                throw new Error("Format Google invalide");
-            }
+            if (!match) throw new Error("Format Google invalide");
             
             var json = JSON.parse(match[1]);
             var rows = json.table.rows;
-            
-            var cols = [];
-            for (var i = 0; i < json.table.cols.length; i++) {
-                cols.push(json.table.cols[i].label || '');
-            }
-            
             var result = [];
+
             for (var r = 0; r < rows.length; r++) {
                 var row = rows[r];
-                var item = {};
                 if (row && row.c) {
-                    for (var c = 0; c < row.c.length; c++) {
-                        if (cols[c]) {
-                            var cell = row.c[c];
-                            if (cell && cell.v !== null && cell.v !== undefined) {
-                                item[cols[c]] = cell.v;
-                            } else {
-                                item[cols[c]] = '';
-                            }
-                        }
+                    var item = {};
+                    for (var c = 0; c < expectedKeys.length; c++) {
+                        var key = expectedKeys[c];
+                        item[key] = cleanValue(row.c[c]);
                     }
                     result.push(item);
                 }
@@ -115,9 +132,10 @@
 
         async function initApp() {
             try {
-                dataParticipants = await fetchSheetTab('Participants');
-                dataProgramme = await fetchSheetTab('Programme');
-                dataUrgence = await fetchSheetTab('Urgence');
+                // Mappage strict basé sur l'ordre exact de vos colonnes visibles sur vos captures d'écran
+                dataParticipants = await fetchSheetTab(0, ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint']);
+                dataProgramme = await fetchSheetTab(1, ['Heure', 'Lieu_FR', 'Description_FR', 'Lieu_DE', 'Description_DE']);
+                dataUrgence = await fetchSheetTab(2, ['Nom', 'Numéro']);
                 
                 renderParticipants();
                 renderProgramme();
@@ -128,7 +146,7 @@
             } catch (error) {
                 console.error(error);
                 var loader = document.getElementById('loading');
-                if (loader) { loader.innerText = "Erreur de connexion avec Google Sheets. Vérifiez le partage public."; }
+                if (loader) { loader.innerText = "Erreur d'affichage. Vérifiez les autorisations de partage."; }
             }
         }
 
@@ -138,10 +156,11 @@
             listEl.innerHTML = '';
             
             var sorted = dataParticipants.slice();
+            // Supprimer la ligne d'en-tête si elle s'est glissée dans les lignes lues
+            if (sorted.length > 0 && sorted[0].Nom === 'Nom') { sorted.shift(); }
+
             if (currentSort === 'alpha') {
-                sorted.sort(function(a, b) {
-                    return (a.Nom || '').localeCompare(b.Nom || '');
-                });
+                sorted.sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                 for (var i = 0; i < sorted.length; i++) {
                     listEl.appendChild(createParticipantCard(sorted[i]));
                 }
@@ -153,16 +172,14 @@
                     if (!clubs[c]) clubs[c] = [];
                     clubs[c].push(p);
                 }
+                var clubOrder = ['Fourmies-Hirson-Vervins', 'Nivelles', 'Gummersbach'];
                 for (var club in clubs) {
                     var header = document.createElement('h3');
-                    header.className = "text-md font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded";
+                    header.className = "text-sm font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
                     header.innerText = club;
                     listEl.appendChild(header);
                     
-                    clubs[club].sort(function(a, b) {
-                        return (a.Nom || '').localeCompare(b.Nom || '');
-                    });
-                    
+                    clubs[club].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                     for (var j = 0; j < clubs[club].length; j++) {
                         listEl.appendChild(createParticipantCard(clubs[club][j]));
                     }
@@ -173,15 +190,28 @@
         function createParticipantCard(p) {
             var div = document.createElement('div');
             div.className = "bg-white p-3 rounded-lg shadow-sm border border-gray-100 my-2 flex items-center gap-3";
-            var photoUrl = p.Photo || 'https://via.placeholder.com/150?text=No+Photo';
-            var conjointText = p.Conjoint ? ' • Conjoint(e) : ' + p.Conjoint : '';
             
-            div.innerHTML = '<img src="' + photoUrl + '" class="w-12 h-12 rounded-full object-cover bg-gray-200" onerror="this.src=\'https://via.placeholder.com/150?text=Photo\'">' +
-                '<div class="flex-1">' +
-                    '<div class="font-bold text-gray-800">' + (p.Nom || '') + ' ' + (p.Prénom || '') + '</div>' +
-                    '<div class="text-xs text-gray-500">' + (p.Profession || '') + conjointText + '</div>' +
-                    '<div class="text-xs text-blue-700 italic">' + (p.Club || '') + '</div>' +
-                '</div>';
+            // Remplacement de via.placeholder par un avatar SVG gris autonome et propre
+            var photoHtml = '<div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 font-bold text-xl flex-shrink-0">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</div>';
+            if (p.Photo && p.Photo.indexOf('http') !== -1) {
+                // Si une vraie URL d'image existe
+                photoHtml = '<img src="' + p.Photo + '" class="w-12 h-12 rounded-full object-cover bg-gray-200 flex-shrink-0" onerror="this.style.display=\'none\'">';
+            }
+            
+            var detailsSub = [];
+            if (p.Profession) detailsSub.push(p.Profession);
+            if (p.Role) detailsSub.push('<span class="text-amber-600 font-medium">' + p.Role + '</span>');
+            if (p.Conjoint) detailsSub.push('👫 ' + p.Conjoint);
+            
+            var subtitle = detailsSub.join(' • ');
+            
+            div.innerHTML = photoHtml +
+                '<div class="flex-1 min-w-0">' +
+                    '<div class="font-bold text-gray-900 truncate">' + (p.Nom || '') + ' ' + (p.Prénom || '') + '</div>' +
+                    '<div class="text-xs text-gray-500 truncate">' + subtitle + '</div>' +
+                    '<div class="text-[10px] text-blue-800 font-semibold mt-0.5">' + (p.Club || '') + '</div>' +
+                '</div>' +
+                (p.Tél ? '<a href="tel:' + p.Tél + '" class="p-2 bg-emerald-50 text-emerald-600 rounded-full text-sm">📞</a>' : '');
             return div;
         }
 
@@ -197,40 +227,49 @@
             if (!container) return;
             container.innerHTML = '';
             
-            for (var i = 0; i < dataProgramme.length; i++) {
+            var list = dataProgramme.slice();
+            if (list.length > 0 && (list[0].Lieu_FR === 'Francais' || list[0].Heure === 'Heure')) { list.shift(); }
+
+            for (var i = 0; i < list.length; i++) {
                 (function(index) {
-                    var item = dataProgramme[index];
+                    var item = list[index];
+                    
+                    // Si la cellule "Heure" contient autre chose qu'un horaire (ex: le titre d'un jour)
+                    var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 5);
+                    
+                    if (estTitreJour) {
+                        var dayHeader = document.createElement('div');
+                        dayHeader.className = "bg-gray-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center";
+                        dayHeader.innerText = item.Heure;
+                        container.appendChild(dayHeader);
+                        return;
+                    }
+
                     var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
                     var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
                     
                     var detailsId = 'details-' + index;
                     var div = document.createElement('div');
-                    div.className = "bg-white border-b border-gray-200 p-4";
+                    div.className = "bg-white border-b border-gray-100 p-4";
                     
-                    div.innerHTML = '<div class="flex justify-between items-center cursor-pointer font-medium" id="trigger-' + detailsId + '">' +
-                            '<div class="flex gap-3">' +
-                                '<span class="text-blue-900 font-bold w-16">' + (item.Heure || '') + '</span>' +
-                                '<span class="text-gray-800">' + lieu + '</span>' +
+                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Voir</span>' : '';
+                    
+                    div.innerHTML = '<div class="flex justify-between items-center ' + (desc ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
+                            '<div class="flex items-baseline gap-3 min-w-0">' +
+                                '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
+                                '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
                             '</div>' +
-                            '<span class="text-gray-400 text-xs">▼ Dérouler</span>' +
+                            badgeDecouvrir +
                         '</div>' +
-                        '<div id="' + detailsId + '" class="hidden mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded border-l-2 border-blue-500">' +
-                            desc.replace(/\\n/g, '<br>') +
-                        '</div>';
+                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed">' + desc.replace(/\n/g, '<br>') + '</div>' : '');
                     
                     container.appendChild(div);
                     
                     var trigger = document.getElementById('trigger-' + detailsId);
-                    if (trigger) {
+                    if (trigger && desc) {
                         trigger.addEventListener('click', function() {
                             var el = document.getElementById(detailsId);
-                            if (el) {
-                                if (el.classList.contains('hidden')) {
-                                    el.classList.remove('hidden');
-                                } else {
-                                    el.classList.add('hidden');
-                                }
-                            }
+                            if (el) el.classList.toggle('hidden');
                         });
                     }
                 })(i);
@@ -248,30 +287,31 @@
             var listEl = document.getElementById('urgence-list');
             if (!listEl) return;
             listEl.innerHTML = '';
-            for (var i = 0; i < dataUrgence.length; i++) {
-                var u = dataUrgence[i];
+            
+            var list = dataUrgence.slice();
+            if (list.length > 0 && list[0].Nom === 'Nom') { list.shift(); }
+
+            for (var i = 0; i < list.length; i++) {
+                var u = list[i];
+                if (!u.Nom && !u.Numéro) continue; // Ignore les lignes vides
+                
                 var div = document.createElement('div');
                 div.className = "bg-white p-4 rounded-lg shadow-sm border border-red-100 my-2 flex justify-between items-center";
                 div.innerHTML = '<div>' +
-                        '<div class="font-bold text-gray-800">' + (u.Nom || '') + '</div>' +
-                        '<div class="text-sm text-red-600 font-mono font-semibold">' + (u.Numéro || '') + '</div>' +
+                        '<div class="font-bold text-gray-900 text-sm">' + (u.Nom || 'Contact Urgence') + '</div>' +
+                        '<div class="text-xs text-red-600 font-mono font-semibold mt-0.5">' + (u.Numéro || '') + '</div>' +
                     '</div>' +
-                    '<a href="tel:' + (u.Numéro || '') + '" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold">' +
-                        '📞 Appeler' +
-                    '</a>';
+                    (u.Numéro ? '<a href="tel:' + u.Numéro + '" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1">📞 Appeler</a>' : '');
                 listEl.appendChild(div);
             }
         }
 
         function switchTab(tabId) {
             var contents = document.querySelectorAll('.tab-content');
-            for (var i = 0; i < contents.length; i++) {
-                contents[i].classList.remove('active');
-            }
+            for (var i = 0; i < contents.length; i++) contents[i].classList.remove('active');
+            
             var buttons = document.querySelectorAll('.tab-button');
-            for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove('active');
-            }
+            for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
             
             document.getElementById(tabId).classList.add('active');
             if (event && event.currentTarget) {
@@ -279,7 +319,6 @@
             }
         }
 
-        // Sécurité ultime : On attend que le HTML soit totalement prêt avant de lancer la fonction Google Sheets
         document.addEventListener("DOMContentLoaded", function() {
             initApp();
         });
