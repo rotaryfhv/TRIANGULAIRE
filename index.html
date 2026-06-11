@@ -74,7 +74,6 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        // Conversion des liens Google Drive pour l'affichage direct des images
         function convertDriveUrl(url) {
             if (!url || url.indexOf('drive.google.com') === -1) return url;
             var match = url.match(/\/file\/d\/([^\/]+)/);
@@ -113,7 +112,6 @@
 
         async function loadAllData() {
             try {
-                // 1. EXTRACTION DES PARTICIPANTS
                 var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
                 var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
@@ -121,8 +119,8 @@
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
                     if (row && row.c) {
-                        var col1 = cleanValue(row.c[1]); // Vérifie la colonne 'Nom'
-                        if (!col1 || col1 === 'Nom') continue; // Saute la ligne de titre ou les lignes vides
+                        var col1 = cleanValue(row.c[1]);
+                        if (!col1 || col1 === 'Nom') continue;
 
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
@@ -134,7 +132,6 @@
                     }
                 }
 
-                // 2. EXTRACTION DU PROGRAMME
                 var rowsProg = await fetchSheetByName('Programme');
                 dataProgramme = [];
                 for (var r = 0; r < rowsProg.length; r++) {
@@ -157,7 +154,6 @@
                     }
                 }
 
-                // 3. EXTRACTION DES CONTACTS D'URGENCE
                 try {
                     var rowsUrg = await fetchSheetByName('Urgence');
                     dataUrgence = [];
@@ -230,40 +226,82 @@
             }
         }
 
+        // Génère un SVG avatar en base64 sans apostrophes dans le SVG
+        function makeAvatarSvg(initiale) {
+            var letter = initiale || '?';
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">'
+                    + '<circle cx="24" cy="24" r="24" fill="#cbd5e1"/>'
+                    + '<text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="#64748b" text-anchor="middle">' + letter + '</text>'
+                    + '</svg>';
+            return 'data:image/svg+xml;base64,' + btoa(svg);
+        }
+
         function createParticipantCard(p, masqueClub) {
             var div = document.createElement('div');
             div.className = "bg-white p-3 rounded-lg shadow-sm border border-gray-100 my-2 flex items-center gap-3";
-            
-            // Avatar de secours neutre en SVG
-            var avatarSecours = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="%23cbd5e1"/><text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="%2364748b" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
-            
-            var photoHtml = '<img src="' + avatarSecours + '" class="w-12 h-12 rounded-full object-cover bg-gray-100 flex-shrink-0" />';
+
+            var initiale = p.Prénom ? p.Prénom.charAt(0).toUpperCase() : '?';
+            var avatarSrc = makeAvatarSvg(initiale);
+
+            // Créer l'élément image via DOM (évite tout problème d'échappement)
+            var img = document.createElement('img');
+            img.className = 'w-12 h-12 rounded-full object-cover bg-gray-200 flex-shrink-0';
+            img.alt = '';
+
             if (p.Photo && p.Photo.indexOf('http') !== -1) {
-                photoHtml = '<img src="' + p.Photo + '" class="w-12 h-12 rounded-full object-cover bg-gray-200 flex-shrink-0" onerror="this.src=\'' + avatarSecours + '\'" />';
+                img.src = p.Photo;
+                img.onerror = function() { this.src = avatarSrc; };
+            } else {
+                img.src = avatarSrc;
             }
-            
-            // Ligne Profession
-            var profHtml = p.Profession ? '<span class="text-xs text-gray-500">' + p.Profession + '</span>' : '';
-            
-            // Ligne Téléphone textuel
-            var phoneTextHtml = p.Tél ? '<div class="text-[11px] text-emerald-600 font-mono mt-0.5 font-bold">📞 ' + p.Tél + '</div>' : '';
-            
-            // Badge du Club (affiché uniquement si on n'est pas trié par Club)
-            var clubBadgeHtml = (!masqueClub && p.Club) ? '<div class="text-[9px] text-blue-900 font-bold mt-1 uppercase tracking-wider">' + p.Club + '</div>' : '';
-            
-            // Conjoint justifié à droite (s'affiche si présent)
-            var conjointHtml = p.Conjoint ? '<div class="text-right text-xs text-gray-500 font-medium self-start whitespace-nowrap">👫 ' + p.Conjoint + '</div>' : '<div></div>';
-            
-            div.innerHTML = photoHtml +
-                '<div class="flex-1 min-w-0">' +
-                    '<div class="font-bold text-gray-950 text-sm truncate">' + (p.Nom || '') + ' ' + (p.Prénom || '') + '</div>' +
-                    profHtml +
-                    phoneTextHtml +
-                    clubBadgeHtml +
-                '</div>' +
-                conjointHtml +
-                (p.Tél ? '<a href="tel:' + p.Tél + '" class="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full text-xs flex-shrink-0 ml-2 self-center">🤙</a>' : '');
-            
+
+            // Conteneur texte
+            var info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+
+            var nomEl = document.createElement('div');
+            nomEl.className = 'font-bold text-gray-950 text-sm truncate';
+            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '');
+            info.appendChild(nomEl);
+
+            // Ligne Profession + Conjoint sur une même ligne si présents
+            if (p.Profession || p.Conjoint) {
+                var metaEl = document.createElement('div');
+                metaEl.className = 'text-xs text-gray-500 mt-0.5';
+                var parts = [];
+                if (p.Profession) parts.push(p.Profession);
+                if (p.Conjoint) parts.push('👫 ' + p.Conjoint);
+                metaEl.textContent = parts.join(' • ');
+                info.appendChild(metaEl);
+            }
+
+            if (p.Tél) {
+                var telEl = document.createElement('div');
+                telEl.className = 'text-[11px] text-emerald-600 font-mono mt-0.5 font-bold';
+                telEl.textContent = '📞 ' + p.Tél;
+                info.appendChild(telEl);
+            }
+
+            if (!masqueClub && p.Club) {
+                var clubEl = document.createElement('div');
+                clubEl.className = 'text-[9px] text-blue-900 font-bold mt-1 uppercase tracking-wider';
+                clubEl.textContent = p.Club;
+                info.appendChild(clubEl);
+            }
+
+            div.appendChild(img);
+            div.appendChild(info);
+
+            // Bouton appel
+            if (p.Tél) {
+                var tel = p.Tél;
+                var btnEl = document.createElement('a');
+                btnEl.href = 'tel:' + tel;
+                btnEl.className = 'p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full text-xs flex-shrink-0 ml-2 self-center';
+                btnEl.textContent = '🤙';
+                div.appendChild(btnEl);
+            }
+
             return div;
         }
 
