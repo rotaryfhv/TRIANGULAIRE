@@ -23,25 +23,31 @@ let dataProgramme = [];
 let dataUrgence = [];
 let currentLanguage = 'FR';
 let currentSort = 'alpha'; // 'alpha' ou 'club'
-// Fonction générique pour lire l'API Viz de Google Sheets
+// Fonction générique ultra-robuste pour lire l'API Google Sheets
 async function fetchSheetTab(tabName) {
-const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?
-tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
-const response = await fetch(url);
-const text = await response.text();
-// Nettoyage de la réponse Google JSON
-const json = JSON.parse(text.substr(47).slice(0, -2));
-const rows = json.table.rows;
-const cols = json.table.cols.map(c => c.label || '');
-return rows.map(row => {
-let item = {};
-row.c.forEach((cell, i) => {
-if(cols[i]) {
-item[cols[i]] = cell ? (cell.v || '') : '';
-}
-});
-return item;
-});
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
+    const response = await fetch(url);
+    const text = await response.text();
+    
+    // Nettoyage sécurisé du format Google JSONP (recherche ce qui est entre google.visualization.Query.setResponse( ... );)
+    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
+    if (!match) {
+        throw new Error("Format de réponse Google Sheets invalide");
+    }
+    
+    const json = JSON.parse(match[1]);
+    const rows = json.table.rows;
+    const cols = json.table.cols.map(c => c.label || '');
+    
+    return rows.map(row => {
+        let item = {};
+        row.c.forEach((cell, i) => {
+            if (cols[i]) {
+                item[cols[i]] = cell ? (cell.v || '') : '';
+            }
+        });
+        return item;
+    });
 }
 async function initApp() {
 try {
