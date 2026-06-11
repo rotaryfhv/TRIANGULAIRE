@@ -25,7 +25,7 @@ let currentLanguage = 'FR';
 let currentSort = 'alpha'; // 'alpha' ou 'club'
 // Fonction générique pour lire l'API Viz de Google Sheets
 async function fetchSheetTab(tabName) {
-const url = `https://docs.google.com/spreadsheets/d/126LXvjJdgHsJ1P_4OE2oL2aj3qm-YYfgUnesx8zrXIg/gviz/tq?
+const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?
 tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
 const response = await fetch(url);
 const text = await response.text();
