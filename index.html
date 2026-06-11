@@ -74,7 +74,7 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        // Conversion des liens de fichiers Google Drive en image directe
+        // Conversion des liens Google Drive pour contourner le blocage d'affichage direct
         function convertDriveUrl(url) {
             if (!url || url.indexOf('drive.google.com') === -1) return url;
             var match = url.match(/\/file\/d\/([^\/]+)/);
@@ -84,6 +84,7 @@
             return url;
         }
 
+        // Extraction et lissage des valeurs brutes ou des dates Google Sheets
         function cleanValue(cell) {
             if (!cell) return '';
             if (cell.f) return cell.f; 
@@ -107,13 +108,13 @@
             var response = await fetch(url);
             var text = await response.text();
             var match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
-            if (!match) throw new Error("Format Google invalide pour " + sheetName);
+            if (!match) throw new Error("Impossible de lire l'onglet : " + sheetName);
             return JSON.parse(match[1]).table.rows;
         }
 
         async function loadAllData() {
             try {
-                // 1. CHARGEMENT DES PARTICIPANTS
+                // 1. EXTRACTION DES PARTICIPANTS
                 var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
                 var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
@@ -122,8 +123,7 @@
                     var row = rowsPart[r];
                     if (row && row.c) {
                         var col0 = cleanValue(row.c[0]);
-                        // Éviter la ligne d'en-tête du tableau
-                        if (col0 === 'Club' || col0 === '') continue;
+                        if (col0 === 'Club' || col0 === '') continue; // Saute la ligne de titre
 
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
@@ -135,12 +135,9 @@
                     }
                 }
 
-                // 2. CHARGEMENT DU PROGRAMME (Et sécurité Urgences)
+                // 2. EXTRACTION DU PROGRAMME
                 var rowsProg = await fetchSheetByName('Programme');
                 dataProgramme = [];
-                dataUrgence = [];
-                var enZoneUrgence = false;
-
                 for (var r = 0; r < rowsProg.length; r++) {
                     var row = rowsProg[r];
                     if (!row || !row.c) continue;
@@ -150,29 +147,48 @@
 
                     if (colA === 'Heure' || colA === 'Francais') continue;
 
-                    // Détection de la zone des numéros d'urgence en bas
-                    if (colA === 'Nom' || colA.indexOf('BERNARD') !== -1 || colA.indexOf('MARIE-CLAIRE') !== -1) {
-                        enZoneUrgence = true;
+                    if (colA || colB) {
+                        dataProgramme.push({
+                            Heure: colA,
+                            Lieu_FR: colB,
+                            Description_FR: cleanValue(row.c[2]),
+                            Lieu_DE: cleanValue(row.c[3]),
+                            Description_DE: cleanValue(row.c[4])
+                        });
                     }
+                }
 
-                    if (enZoneUrgence) {
-                        if (colA && colA !== 'Nom') {
-                            dataUrgence.push({ Nom: colA, Numéro: colB });
+                // 3. EXTRACTION DES CONTACTS D'URGENCE (Depuis un onglet dédié par sécurité)
+                try {
+                    var rowsUrg = await fetchSheetByName('Urgence');
+                    dataUrgence = [];
+                    for (var r = 0; r < rowsUrg.length; r++) {
+                        var row = rowsUrg[r];
+                        if (row && row.c) {
+                            var nomUrg = cleanValue(row.c[0]);
+                            var telUrg = cleanValue(row.c[1]);
+                            if (nomUrg && nomUrg !== 'Nom') {
+                                dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
+                            }
                         }
-                    } else {
-                        if (colA || colB) {
-                            dataProgramme.push({
-                                Heure: colA,
-                                Lieu_FR: colB,
-                                Description_FR: cleanValue(row.c[2]),
-                                Lieu_DE: cleanValue(row.c[3]),
-                                Description_DE: cleanValue(row.c[4])
-                            });
+                    }
+                } catch (e) {
+                    // Si l'onglet s'appelle "Urgences" avec un s
+                    var rowsUrg = await fetchSheetByName('Urgences');
+                    dataUrgence = [];
+                    for (var r = 0; r < rowsUrg.length; r++) {
+                        var row = rowsUrg[r];
+                        if (row && row.c) {
+                            var nomUrg = cleanValue(row.c[0]);
+                            var telUrg = cleanValue(row.c[1]);
+                            if (nomUrg && nomUrg !== 'Nom') {
+                                dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
+                            }
                         }
                     }
                 }
 
-                // Rendu visuel
+                // Actualisation graphique
                 renderParticipants();
                 renderProgramme();
                 renderUrgence();
@@ -180,7 +196,7 @@
                 document.getElementById('loading').style.display = 'none';
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = "Erreur d'accès aux onglets. Vérifiez leurs noms.";
+                document.getElementById('loading').innerText = "Erreur de chargement. Vérifiez les onglets.";
             }
         }
 
@@ -221,7 +237,7 @@
             var div = document.createElement('div');
             div.className = "bg-white p-3 rounded-lg shadow-sm border border-gray-100 my-2 flex items-center gap-3";
             
-            // Avatar de secours neutre en SVG
+            // Code SVG d'un avatar gris par défaut si la photo met du temps à charger
             var avatarSecours = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="24" fill="%23cbd5e1"/><text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="%2364748b" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
             
             var photoHtml = '<img src="' + avatarSecours + '" class="w-12 h-12 rounded-full object-cover bg-gray-100 flex-shrink-0">';
@@ -234,7 +250,7 @@
             if (p.Role && p.Role !== 'Participant') detailsSub.push('<span class="text-amber-600 font-semibold">' + p.Role + '</span>');
             if (p.Conjoint) detailsSub.push('👫 ' + p.Conjoint);
             
-            var phoneTextHtml = p.Tél ? '<div class="text-[11px] text-emerald-600 font-mono mt-0.5">📞 ' + p.Tél + '</div>' : '';
+            var phoneTextHtml = p.Tél ? '<div class="text-[11px] text-emerald-600 font-mono mt-0.5 font-bold">📞 ' + p.Tél + '</div>' : '';
             
             div.innerHTML = photoHtml +
                 '<div class="flex-1 min-w-0">' +
@@ -288,7 +304,7 @@
                             '</div>' +
                             badgeDecouvrir +
                         '</div>' +
-                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed">' + desc.replace(/\n/g, '<br>') + '</div>' : '');
+                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed"><p>' + desc.replace(/\n/g, '<br>') + '</p></div>' : '');
                     
                     container.appendChild(div);
                     
