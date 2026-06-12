@@ -254,7 +254,7 @@
 
             // Créer l'élément image via DOM (évite tout problème d'échappement)
             var img = document.createElement('img');
-            img.className = 'w-12 h-12 rounded-full object-cover bg-gray-200 flex-shrink-0';
+            img.className = 'w-16 h-16 rounded-full object-cover bg-gray-200 flex-shrink-0';
             img.alt = '';
 
             if (p.Photo && p.Photo.indexOf('http') !== -1) {
@@ -312,7 +312,7 @@
                 conjointWrap.className = 'flex flex-col items-center flex-shrink-0 ml-2';
 
                 var conjointImg = document.createElement('img');
-                conjointImg.className = 'w-9 h-9 rounded-full object-cover bg-gray-200';
+                conjointImg.className = 'w-12 h-12 rounded-full object-cover bg-gray-200';
                 conjointImg.alt = '';
 
                 var conjointInitiale = p.Conjoint.charAt(0).toUpperCase();
@@ -327,7 +327,7 @@
 
                 var conjointNom = document.createElement('div');
                 conjointNom.className = 'text-[10px] text-gray-500 font-medium mt-0.5 text-center whitespace-nowrap';
-                conjointNom.textContent = '' + p.Conjoint;
+                conjointNom.textContent = '👫 ' + p.Conjoint;
 
                 conjointWrap.appendChild(conjointImg);
                 conjointWrap.appendChild(conjointNom);
