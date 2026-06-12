@@ -78,7 +78,7 @@
             if (!url || url.indexOf('drive.google.com') === -1) return url;
             var match = url.match(/\/file\/d\/([^\/]+)/);
             if (match && match[1]) {
-                return 'https://docs.google.com/uc?export=view&id=' + match[1];
+                return 'https://lh3.googleusercontent.com/d/' + match[1] + '=w200';
             }
             return url;
         }
@@ -114,7 +114,7 @@
             try {
                 var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
-                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
+                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint', 'Photo_Conjoint'];
 
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
@@ -125,7 +125,7 @@
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
                             var val = cleanValue(row.c[c]);
-                            if (keysPart[c] === 'Photo') val = convertDriveUrl(val);
+                            if (keysPart[c] === 'Photo' || keysPart[c] === 'Photo_Conjoint') val = convertDriveUrl(val);
                             item[keysPart[c]] = val;
                         }
                         dataParticipants.push(item);
@@ -259,27 +259,29 @@
             var info = document.createElement('div');
             info.className = 'flex-1 min-w-0';
 
-            var nomEl = document.createElement('div');
-            nomEl.className = 'font-bold text-gray-950 text-sm truncate';
-            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '');
-            info.appendChild(nomEl);
+            // Ligne Nom + Téléphone dans la continuité
+            var nomLigne = document.createElement('div');
+            nomLigne.className = 'flex items-baseline gap-2 flex-wrap';
 
-            // Ligne Profession + Conjoint sur une même ligne si présents
-            if (p.Profession || p.Conjoint) {
-                var metaEl = document.createElement('div');
-                metaEl.className = 'text-xs text-gray-500 mt-0.5';
-                var parts = [];
-                if (p.Profession) parts.push(p.Profession);
-                if (p.Conjoint) parts.push('👫 ' + p.Conjoint);
-                metaEl.textContent = parts.join(' • ');
-                info.appendChild(metaEl);
-            }
+            var nomEl = document.createElement('span');
+            nomEl.className = 'font-bold text-gray-950 text-sm';
+            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '');
+            nomLigne.appendChild(nomEl);
 
             if (p.Tél) {
-                var telEl = document.createElement('div');
-                telEl.className = 'text-[11px] text-emerald-600 font-mono mt-0.5 font-bold';
+                var telEl = document.createElement('span');
+                telEl.className = 'text-[11px] text-emerald-600 font-mono font-bold';
                 telEl.textContent = '📞 ' + p.Tél;
-                info.appendChild(telEl);
+                nomLigne.appendChild(telEl);
+            }
+            info.appendChild(nomLigne);
+
+            // Ligne Profession seule
+            if (p.Profession) {
+                var profEl = document.createElement('div');
+                profEl.className = 'text-xs text-gray-500 mt-0.5';
+                profEl.textContent = p.Profession;
+                info.appendChild(profEl);
             }
 
             if (!masqueClub && p.Club) {
@@ -291,6 +293,34 @@
 
             div.appendChild(img);
             div.appendChild(info);
+
+            // Bloc Conjoint : photo + prénom, aligné à droite
+            if (p.Conjoint) {
+                var conjointWrap = document.createElement('div');
+                conjointWrap.className = 'flex flex-col items-center flex-shrink-0 ml-2';
+
+                var conjointImg = document.createElement('img');
+                conjointImg.className = 'w-9 h-9 rounded-full object-cover bg-gray-200';
+                conjointImg.alt = '';
+
+                var conjointInitiale = p.Conjoint.charAt(0).toUpperCase();
+                var conjointAvatarSrc = makeAvatarSvg(conjointInitiale);
+
+                if (p.Photo_Conjoint && p.Photo_Conjoint.indexOf('http') !== -1) {
+                    conjointImg.src = p.Photo_Conjoint;
+                    conjointImg.onerror = function() { this.src = conjointAvatarSrc; };
+                } else {
+                    conjointImg.src = conjointAvatarSrc;
+                }
+
+                var conjointNom = document.createElement('div');
+                conjointNom.className = 'text-[10px] text-gray-500 font-medium mt-0.5 text-center whitespace-nowrap';
+                conjointNom.textContent = '👫 ' + p.Conjoint;
+
+                conjointWrap.appendChild(conjointImg);
+                conjointWrap.appendChild(conjointNom);
+                div.appendChild(conjointWrap);
+            }
 
             // Bouton appel
             if (p.Tél) {
