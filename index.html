@@ -215,7 +215,7 @@
                 for (var club in clubs) {
                     var header = document.createElement('h3');
                     header.className = "text-xs font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
-                    header.innerText = club;
+                    header.textContent = getClubFlag(club) + ' ' + club;
                     listEl.appendChild(header);
                     
                     clubs[club].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
@@ -234,6 +234,15 @@
                     + '<text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="#64748b" text-anchor="middle">' + letter + '</text>'
                     + '</svg>';
             return 'data:image/svg+xml;base64,' + btoa(svg);
+        }
+
+        // Retourne le drapeau associé au club selon sa ville
+        function getClubFlag(clubName) {
+            var name = (clubName || '').toUpperCase();
+            if (name.indexOf('FOURMIES') !== -1 || name.indexOf('HIRSON') !== -1 || name.indexOf('VERVINS') !== -1) return '🇫🇷';
+            if (name.indexOf('GUMMERSBACH') !== -1) return '🇩🇪';
+            if (name.indexOf('NIVELLES') !== -1) return '🇧🇪';
+            return '';
         }
 
         function createParticipantCard(p, masqueClub) {
@@ -276,11 +285,14 @@
             }
             info.appendChild(nomLigne);
 
-            // Ligne Profession seule
-            if (p.Profession) {
+            // Ligne Profession + Role
+            if (p.Profession || p.Role) {
                 var profEl = document.createElement('div');
                 profEl.className = 'text-xs text-gray-500 mt-0.5';
-                profEl.textContent = p.Profession;
+                var profParts = [];
+                if (p.Profession) profParts.push(p.Profession);
+                if (p.Role) profParts.push('🎗️ ' + p.Role);
+                profEl.textContent = profParts.join(' • ');
                 info.appendChild(profEl);
             }
 
@@ -320,16 +332,6 @@
                 conjointWrap.appendChild(conjointImg);
                 conjointWrap.appendChild(conjointNom);
                 div.appendChild(conjointWrap);
-            }
-
-            // Bouton appel
-            if (p.Tél) {
-                var tel = p.Tél;
-                var btnEl = document.createElement('a');
-                btnEl.href = 'tel:' + tel;
-                btnEl.className = 'p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-full text-xs flex-shrink-0 ml-2 self-center';
-                btnEl.textContent = '🤙';
-                div.appendChild(btnEl);
             }
 
             return div;
