@@ -20,20 +20,18 @@
     </div>
 
     <header class="bg-blue-950 text-white text-center py-4 sticky top-0 shadow-md z-40">
-      <h1 class="text-lg font-bold tracking-wide flex items-center justify-center gap-2">
-    <img src="rotary-logo.png" alt="Rotary" class="w-6 h-6">
-    Triangulaire - Lille
-</h1>
+        <h1 class="text-lg font-bold tracking-wide">🤝 Triangulaire - Lille</h1>
     </header>
 
     <main class="p-4 max-w-md mx-auto">
         
         <section id="tab-participants" class="tab-content active">
-            <div class="flex justify-between items-center mb-4 bg-white p-2 rounded shadow-sm">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-4 bg-white p-2 rounded shadow-sm">
                 <span class="text-xs font-semibold text-gray-500">Trier par :</span>
-                <div class="flex gap-1">
-                    <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-3 py-1 bg-blue-900 text-white rounded text-xs">A-Z (Nom)</button>
-                    <button id="btn-sort-club" onclick="changeSort('club')" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Club</button>
+                <div class="flex gap-1 flex-wrap">
+                    <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-2.5 py-1 bg-blue-900 text-white rounded text-xs">A-Z (Nom)</button>
+                    <button id="btn-sort-club" onclick="changeSort('club')" class="px-2.5 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Club</button>
+                    <button id="btn-sort-groupe" onclick="changeSort('groupe')" class="px-2.5 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Groupe</button>
                 </div>
             </div>
             <div id="club-jump-bar" class="club-jump-bar gap-2 mb-4 sticky top-[60px] z-30">
@@ -124,7 +122,7 @@
             try {
                 var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
-                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint', 'Photo_Conjoint'];
+                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint', 'Photo_Conjoint', 'Groupe'];
 
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
@@ -214,6 +212,27 @@
                 for (var i = 0; i < sorted.length; i++) {
                     listEl.appendChild(createParticipantCard(sorted[i], false));
                 }
+            } else if (currentSort === 'groupe') {
+                var groupes = {};
+                for (var i = 0; i < sorted.length; i++) {
+                    var p = sorted[i];
+                    var g = p.Groupe || 'Sans Groupe';
+                    if (!groupes[g]) groupes[g] = [];
+                    groupes[g].push(p);
+                }
+                var groupeKeys = Object.keys(groupes).sort();
+                for (var k = 0; k < groupeKeys.length; k++) {
+                    var groupe = groupeKeys[k];
+                    var header = document.createElement('h3');
+                    header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
+                    header.textContent = 'Groupe ' + groupe;
+                    listEl.appendChild(header);
+
+                    groupes[groupe].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
+                    for (var j = 0; j < groupes[groupe].length; j++) {
+                        listEl.appendChild(createParticipantCard(groupes[groupe][j], false));
+                    }
+                }
             } else {
                 var clubs = {};
                 for (var i = 0; i < sorted.length; i++) {
@@ -297,7 +316,7 @@
 
             var nomEl = document.createElement('span');
             nomEl.className = 'font-bold text-gray-950 text-sm';
-            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '');
+            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '') + (p.Groupe ? ' (' + p.Groupe + ')' : '');
             nomLigne.appendChild(nomEl);
 
             if (p.Tél) {
@@ -350,7 +369,7 @@
 
                 var conjointNom = document.createElement('div');
                 conjointNom.className = 'text-[10px] text-gray-500 font-medium mt-0.5 text-center whitespace-nowrap';
-                conjointNom.textContent = '' + p.Conjoint;
+                conjointNom.textContent = '👫 ' + p.Conjoint;
 
                 conjointWrap.appendChild(conjointImg);
                 conjointWrap.appendChild(conjointNom);
@@ -362,8 +381,11 @@
 
         function changeSort(type) {
             currentSort = type;
-            document.getElementById('btn-sort-alpha').className = type === 'alpha' ? 'px-3 py-1 bg-blue-900 text-white rounded text-xs' : 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
-            document.getElementById('btn-sort-club').className = type === 'club' ? 'px-3 py-1 bg-blue-900 text-white rounded text-xs' : 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
+            var activeClass = 'px-3 py-1 bg-blue-900 text-white rounded text-xs';
+            var inactiveClass = 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
+            document.getElementById('btn-sort-alpha').className = type === 'alpha' ? activeClass : inactiveClass;
+            document.getElementById('btn-sort-club').className = type === 'club' ? activeClass : inactiveClass;
+            document.getElementById('btn-sort-groupe').className = type === 'groupe' ? activeClass : inactiveClass;
             var jumpBar = document.getElementById('club-jump-bar');
             if (jumpBar) {
                 if (type === 'club') jumpBar.classList.add('active');
