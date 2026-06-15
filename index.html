@@ -9,6 +9,8 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .tab-button.active { border-bottom: 3px solid #1a365d; color: #1a365d; font-weight: bold; }
+        .club-jump-bar { display: none; }
+        .club-jump-bar.active { display: flex; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans pb-20">
@@ -30,6 +32,11 @@
                     <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-3 py-1 bg-blue-900 text-white rounded text-xs">A-Z (Nom)</button>
                     <button id="btn-sort-club" onclick="changeSort('club')" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Club</button>
                 </div>
+            </div>
+            <div id="club-jump-bar" class="club-jump-bar gap-2 mb-4 sticky top-[60px] z-30">
+                <button onclick="jumpToCountry('FR')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇫🇷 France</button>
+                <button onclick="jumpToCountry('DE')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇩🇪 Allemagne</button>
+                <button onclick="jumpToCountry('BE')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇧🇪 Belgique</button>
             </div>
             <div id="participants-list"></div>
         </section>
@@ -214,8 +221,12 @@
                 }
                 for (var club in clubs) {
                     var header = document.createElement('h3');
-                    header.className = "text-xs font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
+                    header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
                     header.textContent = getClubFlag(club) + ' ' + club;
+                    var country = getClubCountry(club);
+                    if (country && !document.getElementById('club-anchor-' + country)) {
+                        header.id = 'club-anchor-' + country;
+                    }
                     listEl.appendChild(header);
                     
                     clubs[club].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
@@ -242,6 +253,15 @@
             if (name.indexOf('FOURMIES') !== -1 || name.indexOf('HIRSON') !== -1 || name.indexOf('VERVINS') !== -1) return '🇫🇷';
             if (name.indexOf('GUMMERSBACH') !== -1) return '🇩🇪';
             if (name.indexOf('NIVELLES') !== -1) return '🇧🇪';
+            return '';
+        }
+
+        // Retourne le code pays associé au club selon sa ville
+        function getClubCountry(clubName) {
+            var name = (clubName || '').toUpperCase();
+            if (name.indexOf('FOURMIES') !== -1 || name.indexOf('HIRSON') !== -1 || name.indexOf('VERVINS') !== -1) return 'FR';
+            if (name.indexOf('GUMMERSBACH') !== -1) return 'DE';
+            if (name.indexOf('NIVELLES') !== -1) return 'BE';
             return '';
         }
 
@@ -327,7 +347,7 @@
 
                 var conjointNom = document.createElement('div');
                 conjointNom.className = 'text-[10px] text-gray-500 font-medium mt-0.5 text-center whitespace-nowrap';
-                conjointNom.textContent = '' + p.Conjoint;
+                conjointNom.textContent = '👫 ' + p.Conjoint;
 
                 conjointWrap.appendChild(conjointImg);
                 conjointWrap.appendChild(conjointNom);
@@ -341,7 +361,17 @@
             currentSort = type;
             document.getElementById('btn-sort-alpha').className = type === 'alpha' ? 'px-3 py-1 bg-blue-900 text-white rounded text-xs' : 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
             document.getElementById('btn-sort-club').className = type === 'club' ? 'px-3 py-1 bg-blue-900 text-white rounded text-xs' : 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
+            var jumpBar = document.getElementById('club-jump-bar');
+            if (jumpBar) {
+                if (type === 'club') jumpBar.classList.add('active');
+                else jumpBar.classList.remove('active');
+            }
             renderParticipants();
+        }
+
+        function jumpToCountry(country) {
+            var el = document.getElementById('club-anchor-' + country);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function renderProgramme() {
