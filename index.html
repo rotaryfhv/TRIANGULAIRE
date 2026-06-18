@@ -82,7 +82,11 @@
         var dataParticipants = [];
         var dataProgramme = [];
         var dataUrgence = [];
-        var currentLanguage = 'FR';
+        // Détecte la langue du téléphone/navigateur
+        var userLang = navigator.language || navigator.userLanguage; 
+
+        // Si la langue commence par 'de' (de-DE, de-AT, de-CH...), on bascule en allemand, sinon français par défaut
+        var currentLanguage = userLang.startsWith('de') ? 'DE' : 'FR';
         var currentSort = 'alpha';
 
         function convertDriveUrl(url) {
@@ -516,6 +520,8 @@ for (var r = 0; r < rowsProg.length; r++) {
 
         document.addEventListener("DOMContentLoaded", function() {
             loadAllData();
+            // Applique visuellement les couleurs sur les boutons FR/DE selon la langue détectée
+    switchLanguage(currentLanguage);
         });
     </script>
 </body>
