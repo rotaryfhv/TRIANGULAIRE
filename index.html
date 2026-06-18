@@ -420,13 +420,16 @@ for (var r = 0; r < rowsProg.length; r++) {
             var item = dataProgramme[index];
             var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
             
-            if (estTitreJour) {
-                var dayHeader = document.createElement('div');
-                dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
-                dayHeader.innerText = item.Heure;
-                container.appendChild(dayHeader);
-                return;
-            }
+if (estTitreJour) {
+    var dayHeader = document.createElement('div');
+    dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
+    
+    // Traduction dynamique de la date selon la langue courante
+    dayHeader.innerText = formaterDateMeteo(item.Heure, currentLanguage);
+    
+    container.appendChild(dayHeader);
+    return;
+}
 
             // Sélection des données selon la langue sélectionnée (FR ou DE)
             var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
@@ -523,6 +526,47 @@ for (var r = 0; r < rowsProg.length; r++) {
             // Applique visuellement les couleurs sur les boutons FR/DE selon la langue détectée
     switchLanguage(currentLanguage);
         });
+        function formaterDateMeteo(texteDate, lang) {
+    // Si l'année n'est pas écrite, on force 2027 pour la conversion (adapté à votre événement)
+    var texteComplet = texteDate;
+    if (texteDate.indexOf('2027') === -1) {
+        texteComplet = texteDate + ' 2027';
+    }
+
+    // Dictionnaire pour aider JavaScript à comprendre les mois en français écrit
+    var moisFR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    var parts = texteComplet.toLowerCase().split(' ');
+    
+    var jourNum = null;
+    var moisIndex = -1;
+    var anneeNum = 2027;
+
+    // Extraction du numéro du jour et du mois
+    for (var i = 0; i < parts.length; i++) {
+        if (!isNaN(parts[i]) && parts[i].length <= 2) {
+            jourNum = parseInt(parts[i], 10);
+        }
+        var idx = moisFR.indexOf(parts[i]);
+        if (idx !== -1) {
+            moisIndex = idx;
+        }
+        if (!isNaN(parts[i]) && parts[i].length === 4) {
+            anneeNum = parseInt(parts[i], 10);
+        }
+    }
+
+    // Si la conversion échoue, on renvoie le texte d'origine par sécurité
+    if (jourNum === null || moisIndex === -1) return texteDate;
+
+    // Création de l'objet Date JavaScript
+    var dateObj = new Date(anneeNum, moisIndex, jourNum);
+    
+    // Formatage natif selon la langue (FR ou DE)
+    var codeLangue = lang === 'DE' ? 'de-DE' : 'fr-FR';
+    var options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    
+    return new Intl.DateTimeFormat(codeLangue, options).format(dateObj);
+}
     </script>
 </body>
 </html>
