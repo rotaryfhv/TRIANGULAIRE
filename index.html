@@ -143,27 +143,31 @@
                     }
                 }
 
-                var rowsProg = await fetchSheetByName('Programme');
-                dataProgramme = [];
-                for (var r = 0; r < rowsProg.length; r++) {
-                    var row = rowsProg[r];
-                    if (!row || !row.c) continue;
+               var rowsProg = await fetchSheetByName('Programme');
+dataProgramme = [];
+for (var r = 0; r < rowsProg.length; r++) {
+    var row = rowsProg[r];
+    if (!row || !row.c) continue;
 
-                    var colA = cleanValue(row.c[0]);
-                    var colB = cleanValue(row.c[1]);
+    var colA = cleanValue(row.c[0]); // Heure
+    var colB = cleanValue(row.c[1]); // Lieu_FR
 
-                    if (colA === 'Heure' || colA === 'Francais') continue;
+    if (colA === 'Heure' || colA === 'Francais') continue;
 
-                    if (colA || colB) {
-                        dataProgramme.push({
-                            Heure: colA,
-                            Lieu_FR: colB,
-                            Description_FR: cleanValue(row.c[2]),
-                            Lieu_DE: cleanValue(row.c[3]),
-                            Description_DE: cleanValue(row.c[4])
-                        });
-                    }
-                }
+    if (colA || colB) {
+        dataProgramme.push({
+            Heure: colA,
+            Lieu_FR: colB,
+            Description_FR: cleanValue(row.c[2]),
+            Lien_FR: row.c[3] ? cleanValue(row.c[3]) : '',        // Colonne D
+            Texte_FR: row.c[4] ? cleanValue(row.c[4]) : '',       // Colonne E
+            Lieu_DE: cleanValue(row.c[5]),                        // Colonne F
+            Description_DE: cleanValue(row.c[6]),                 // Colonne G
+            Lien_DE: row.c[7] ? cleanValue(row.c[7]) : '',        // Colonne H
+            Texte_DE: row.c[8] ? cleanValue(row.c[8]) : ''         // Colonne I
+        });
+    }
+}
 
                 try {
                     var rowsUrg = await fetchSheetByName('Urgence');
@@ -402,54 +406,75 @@
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        function renderProgramme() {
-            var container = document.getElementById('programme-container');
-            if (!container) return;
-            container.innerHTML = '';
+       function renderProgramme() {
+    var container = document.getElementById('programme-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    for (var i = 0; i < dataProgramme.length; i++) {
+        (function(index) {
+            var item = dataProgramme[index];
+            var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
             
-            for (var i = 0; i < dataProgramme.length; i++) {
-                (function(index) {
-                    var item = dataProgramme[index];
-                    var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
-                    
-                    if (estTitreJour) {
-                        var dayHeader = document.createElement('div');
-                        dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
-                        dayHeader.innerText = item.Heure;
-                        container.appendChild(dayHeader);
-                        return;
-                    }
-
-                    var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
-                    var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
-                    
-                    var detailsId = 'details-' + index;
-                    var div = document.createElement('div');
-                    div.className = "bg-white border-b border-gray-100 p-4";
-                    
-                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
-                    
-                    div.innerHTML = '<div class="flex justify-between items-center ' + (desc ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
-                            '<div class="flex items-baseline gap-3 min-w-0">' +
-                                '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
-                                '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
-                            '</div>' +
-                            badgeDecouvrir +
-                        '</div>' +
-                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed"><p>' + desc.replace(/\n/g, '<br>') + '</p></div>' : '');
-                    
-                    container.appendChild(div);
-                    
-                    var trigger = document.getElementById('trigger-' + detailsId);
-                    if (trigger && desc) {
-                        trigger.addEventListener('click', function() {
-                            var el = document.getElementById(detailsId);
-                            if (el) el.classList.toggle('hidden');
-                        });
-                    }
-                })(i);
+            if (estTitreJour) {
+                var dayHeader = document.createElement('div');
+                dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
+                dayHeader.innerText = item.Heure;
+                container.appendChild(dayHeader);
+                return;
             }
-        }
+
+            // Sélection des données selon la langue sélectionnée (FR ou DE)
+            var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
+            var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
+            var lienPdf = currentLanguage === 'FR' ? (item.Lien_FR || '') : (item.Lien_DE || '');
+            
+            // Texte du bouton par défaut si la cellule du Google Sheets est vide
+            var texteParDefaut = currentLanguage === 'FR' ? '📄 Voir le document' : '📄 Dokument ansehen';
+            var texteLien = currentLanguage === 'FR' ? (item.Texte_FR || texteParDefaut) : (item.Texte_DE || texteParDefaut);
+            
+            var detailsId = 'details-' + index;
+            var div = document.createElement('div');
+            div.className = "bg-white border-b border-gray-100 p-4";
+            
+            var aDuContenu = desc || lienPdf;
+            var badgeDecouvrir = aDuContenu ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
+            
+            // Construction dynamique du bloc dépliant
+            var detailsHtml = '';
+            if (aDuContenu) {
+                detailsHtml += '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed">';
+                if (desc) {
+                    detailsHtml += '<p class="mb-3">' + desc.replace(/\n/g, '<br>') + '</p>';
+                }
+                if (lienPdf) {
+                    detailsHtml += '<a href="' + lienPdf + '" target="_blank" class="inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3 py-1.5 rounded text-[11px] shadow-sm transition-colors mt-1">' +
+                                        texteLien +
+                                   '</a>';
+                }
+                detailsHtml += '</div>';
+            }
+            
+            div.innerHTML = '<div class="flex justify-between items-center ' + (aDuContenu ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
+                    '<div class="flex items-baseline gap-3 min-w-0">' +
+                        '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
+                        '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
+                    '</div>' +
+                    badgeDecouvrir +
+                '</div>' + detailsHtml;
+            
+            container.appendChild(div);
+            
+            var trigger = document.getElementById('trigger-' + detailsId);
+            if (trigger && aDuContenu) {
+                trigger.addEventListener('click', function() {
+                    var el = document.getElementById(detailsId);
+                    if (el) el.classList.toggle('hidden');
+                });
+            }
+        })(i);
+    }
+}
 
         function switchLanguage(lang) {
             currentLanguage = lang;
