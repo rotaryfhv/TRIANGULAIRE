@@ -11,7 +11,7 @@
         .tab-button.active { border-bottom: 3px solid #1a365d; color: #1a365d; font-weight: bold; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans pb-20">
+<body class="bg-gray-200 font-sans pb-20">
 
     <div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50 text-gray-500 font-medium">
         Chargement des données en temps réel...
@@ -24,7 +24,7 @@
     <main class="p-2 max-w-lg mx-auto">
         
         <section id="tab-participants" class="tab-content active">
-            <div class="bg-white p-2 rounded shadow-sm mb-3 flex flex-col gap-2">
+            <div id="filter-bar" class="bg-white p-2 rounded shadow-sm flex flex-col gap-2 sticky z-30" style="top:64px;">
                 <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Filtrer & Trier par :</span>
                 <div class="grid grid-cols-3 gap-1">
                     <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium">A-Z (Nom)</button>
@@ -32,8 +32,10 @@
                     <button id="btn-sort-group" onclick="changeSort('groupe')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Groupe</button>
                 </div>
             </div>
+            <div id="club-jump-bar" class="hidden bg-white border-t border-gray-100 px-2 py-1.5 flex gap-1 sticky z-30" style="top:116px;">
+            </div>
             
-            <div id="participants-container"></div>
+            <div id="participants-container" class="mt-2"></div>
         </section>
 
         <section id="tab-programme" class="tab-content">
@@ -252,8 +254,29 @@
                     if (!groups[c]) groups[c] = [];
                     groups[c].push(sorted[i]);
                 }
+                // Barre de raccourcis avec les noms de clubs
+                var jumpBar = document.getElementById('club-jump-bar');
+                jumpBar.innerHTML = '';
+                jumpBar.classList.remove('hidden');
+                jumpBar.style.display = 'flex';
+                var clubKeys = Object.keys(groups);
+                for (var ki = 0; ki < clubKeys.length; ki++) {
+                    (function(clubName) {
+                        var btn = document.createElement('button');
+                        btn.className = "flex-1 py-1 bg-blue-950 text-white text-[10px] font-bold rounded flex items-center justify-center gap-0.5";
+                        btn.innerHTML = getDrapeau(clubName) + ' <span class="truncate">' + clubName.split(' ')[0] + '</span>';
+                        btn.onclick = function() {
+                            var el = document.getElementById('club-anchor-' + clubName.replace(/\s/g, '_'));
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        };
+                        jumpBar.appendChild(btn);
+                    })(clubKeys[ki]);
+                }
+
                 for (var key in groups) {
-                    container.appendChild(createClubHeader(key));
+                    var header = createClubHeader(key);
+                    header.id = 'club-anchor-' + key.replace(/\s/g, '_');
+                    container.appendChild(header);
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                     for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j], true));
@@ -501,6 +524,11 @@
             document.getElementById('btn-sort-alpha').className = type === 'alpha' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
             document.getElementById('btn-sort-club').className = type === 'club' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
             document.getElementById('btn-sort-group').className = type === 'groupe' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
+            if (type !== 'club') {
+                var jumpBar = document.getElementById('club-jump-bar');
+                jumpBar.classList.add('hidden');
+                jumpBar.style.display = 'none';
+            }
             renderParticipants();
         }
 
