@@ -320,62 +320,57 @@
 
         function createTile(p) {
             var tile = document.createElement('div');
-            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[145px]";
+            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden";
             tile.onclick = function() { openModal(p); };
 
-            // Drapeau + rôle en haut à droite, rôle en dessous du drapeau
-            var topRight = document.createElement('div');
-            topRight.className = "absolute top-1 right-1 flex flex-col items-end gap-0.5 max-w-[45px]";
-            var flagSpan = document.createElement('span');
-            flagSpan.className = "text-xs select-none";
-            flagSpan.innerText = getDrapeau(p.Club);
-            topRight.appendChild(flagSpan);
+            // Ligne drapeau + rôle tout en haut (dans le flux, pas en absolute)
+            var topBar = document.createElement('div');
+            topBar.className = "w-full flex justify-end items-center gap-1 mb-1 min-h-[16px]";
             if (p.Role) {
                 var roleSpan = document.createElement('span');
-                roleSpan.className = "text-[7px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded leading-tight text-right break-words";
-                roleSpan.style.cssText = "word-break:break-word;white-space:normal;";
+                roleSpan.className = "text-[7px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded leading-tight";
                 roleSpan.innerText = p.Role;
-                topRight.appendChild(roleSpan);
+                topBar.appendChild(roleSpan);
             }
-            tile.appendChild(topRight);
-
-            // Photos côte à côte sans chevauchement
-            var photosContainer = document.createElement('div');
-            photosContainer.className = "flex gap-1 mt-2 mb-2 justify-center items-center w-full";
-            tile.appendChild(photosContainer);
+            var flagSpan = document.createElement('span');
+            flagSpan.className = "text-xs select-none flex-shrink-0";
+            flagSpan.innerText = getDrapeau(p.Club);
+            topBar.appendChild(flagSpan);
+            tile.appendChild(topBar);
 
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
-            var photoSize = p.Conjoint ? "w-10 h-10" : "w-14 h-14";
+            // Photos côte à côte, grandes, occupant toute la largeur
+            var photosContainer = document.createElement('div');
+            photosContainer.className = "flex gap-1 justify-center items-center w-full mb-2";
+            tile.appendChild(photosContainer);
+
+            var imgSize = p.Conjoint ? "w-[48%] aspect-square" : "w-20 h-20";
 
             if (p.Photo && p.Photo.startsWith('http')) {
                 var img1 = document.createElement('img');
                 img1.src = p.Photo;
-                img1.className = photoSize + " rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 bg-gray-100";
+                img1.className = imgSize + " rounded-lg object-cover bg-gray-100";
                 img1.onerror = function() {
-                    if (img1.parentNode) img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
+                    if (img1.parentNode) img1.parentNode.replaceChild(createFallback(initial1, false, p.Conjoint), img1);
                 };
                 photosContainer.appendChild(img1);
             } else {
-                var b1 = createInitialBadge1(initial1);
-                if (p.Conjoint) b1.className = "w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
-                photosContainer.appendChild(b1);
+                photosContainer.appendChild(createFallback(initial1, false, p.Conjoint));
             }
 
             if (p.Conjoint) {
                 if (p.Photo_Conjoint && p.Photo_Conjoint.startsWith('http')) {
                     var img2 = document.createElement('img');
                     img2.src = p.Photo_Conjoint;
-                    img2.className = "w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 bg-gray-100";
+                    img2.className = imgSize + " rounded-lg object-cover bg-gray-100";
                     img2.onerror = function() {
-                        if (img2.parentNode) img2.parentNode.replaceChild(createInitialBadge2(initial2 || '?'), img2);
+                        if (img2.parentNode) img2.parentNode.replaceChild(createFallback(initial2 || '?', true, true), img2);
                     };
                     photosContainer.appendChild(img2);
                 } else {
-                    var b2 = createInitialBadge2(initial2 || '?');
-                    b2.className = "w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
-                    photosContainer.appendChild(b2);
+                    photosContainer.appendChild(createFallback(initial2 || '?', true, true));
                 }
             }
 
@@ -387,7 +382,6 @@
             nomDiv.innerText = p.Nom || '';
             textContainer.appendChild(nomDiv);
 
-            // Prénoms sur une seule ligne : "Marie-Claire & Antoine" ou juste "Marie-Claire"
             var prenomDiv = document.createElement('div');
             prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
             prenomDiv.innerText = p.Conjoint ? (p.Prénom || '') + ' & ' + p.Conjoint : (p.Prénom || '');
@@ -402,6 +396,16 @@
 
             tile.appendChild(textContainer);
             return tile;
+        }
+
+        function createFallback(letter, isConjoint, hasConjoint) {
+            var d = document.createElement('div');
+            var sizeClass = hasConjoint ? "w-[48%] aspect-square" : "w-20 h-20";
+            var bg = isConjoint ? "background:#fff7ed;color:#ea580c;" : "background:#e2e8f0;color:#64748b;";
+            d.className = sizeClass + " rounded-lg flex items-center justify-center font-bold text-xl";
+            d.style.cssText = bg;
+            d.innerText = letter;
+            return d;
         }
 
         function openModal(p) {
