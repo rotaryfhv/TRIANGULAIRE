@@ -29,7 +29,7 @@
                 <div class="grid grid-cols-3 gap-1">
                     <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium">A-Z (Nom)</button>
                     <button id="btn-sort-club" onclick="changeSort('club')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Club</button>
-                    <button id="btn-sort-group" onclick="changeSort('group')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Groupe</button>
+                    <button id="btn-sort-group" onclick="changeSort('groupe')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Groupe</button>
                 </div>
             </div>
             
@@ -95,19 +95,18 @@
         var dataParticipants = [];
         var dataProgramme = [];
         var dataUrgence = [];
-        var currentLanguage = 'FR';
+        var userLang = navigator.language || navigator.userLanguage;
+        var currentLanguage = userLang.startsWith('de') ? 'DE' : 'FR';
         var currentSort = 'alpha';
 
         // Logique de conversion d'origine (strictement identique à votre première version fonctionnelle)
         function convertDriveUrl(url) {
-            if (!url) return '';
-            var urlStr = String(url);
-            if (urlStr.indexOf('drive.google.com') === -1) return urlStr;
-            var match = urlStr.match(/\/file\/d\/([^\/]+)/);
+            if (!url || url.indexOf('drive.google.com') === -1) return url;
+            var match = url.match(/\/file\/d\/([^\/]+)/);
             if (match && match[1]) {
-                return 'https://docs.google.com/uc?export=view&id=' + match[1];
+                return 'https://lh3.googleusercontent.com/d/' + match[1] + '=w200';
             }
-            return urlStr;
+            return url;
         }
 
         function cleanValue(cell) {
@@ -154,7 +153,7 @@
                 }
                 
                 dataParticipants = [];
-                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
+                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint', 'Photo_Conjoint', 'Groupe'];
 
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
@@ -165,7 +164,7 @@
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
                             var val = row.c[c] ? cleanValue(row.c[c]) : '';
-                            if (keysPart[c] === 'Photo') val = convertDriveUrl(val);
+                            if (keysPart[c] === 'Photo' || keysPart[c] === 'Photo_Conjoint') val = convertDriveUrl(val);
                             item[keysPart[c]] = val;
                         }
                         dataParticipants.push(item);
@@ -191,8 +190,12 @@
                             Heure: colA,
                             Lieu_FR: colB,
                             Description_FR: row.c[2] ? cleanValue(row.c[2]) : '',
-                            Lieu_DE: row.c[3] ? cleanValue(row.c[3]) : '',
-                            Description_DE: row.c[4] ? cleanValue(row.c[4]) : ''
+                            Lien_FR: row.c[3] ? cleanValue(row.c[3]) : '',
+                            Texte_FR: row.c[4] ? cleanValue(row.c[4]) : '',
+                            Lieu_DE: row.c[5] ? cleanValue(row.c[5]) : '',
+                            Description_DE: row.c[6] ? cleanValue(row.c[6]) : '',
+                            Lien_DE: row.c[7] ? cleanValue(row.c[7]) : '',
+                            Texte_DE: row.c[8] ? cleanValue(row.c[8]) : ''
                         });
                     }
                 }
@@ -257,7 +260,7 @@
                     container.appendChild(grid);
                 }
                 
-            } else if (currentSort === 'group') {
+            } else if (currentSort === 'groupe') {
                 var groups = {};
                 for (var i = 0; i < sorted.length; i++) {
                     var g = sorted[i].Role || 'Participant';
@@ -435,7 +438,7 @@
             currentSort = type;
             document.getElementById('btn-sort-alpha').className = type === 'alpha' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
             document.getElementById('btn-sort-club').className = type === 'club' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
-            document.getElementById('btn-sort-group').className = type === 'group' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
+            document.getElementById('btn-sort-group').className = type === 'groupe' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
             renderParticipants();
         }
 
@@ -452,33 +455,48 @@
                     if (estTitreJour) {
                         var dayHeader = document.createElement('div');
                         dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
-                        dayHeader.innerText = item.Heure;
+                        dayHeader.innerText = formaterDateMeteo(item.Heure, currentLanguage);
                         container.appendChild(dayHeader);
                         return;
                     }
 
                     var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
                     var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
+                    var lienPdf = currentLanguage === 'FR' ? (item.Lien_FR || '') : (item.Lien_DE || '');
+                    var texteParDefaut = currentLanguage === 'FR' ? '📄 Voir le document' : '📄 Dokument ansehen';
+                    var texteLien = currentLanguage === 'FR' ? (item.Texte_FR || texteParDefaut) : (item.Texte_DE || texteParDefaut);
                     
                     var detailsId = 'details-' + index;
                     var div = document.createElement('div');
                     div.className = "bg-white border-b border-gray-100 p-4";
                     
-                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
+                    var aDuContenu = desc || lienPdf;
+                    var badgeDecouvrir = aDuContenu ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
                     
-                    div.innerHTML = '<div class="flex justify-between items-center ' + (desc ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
+                    var detailsHtml = '';
+                    if (aDuContenu) {
+                        detailsHtml += '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed">';
+                        if (desc) {
+                            detailsHtml += '<p class="mb-3">' + desc.replace(/\n/g, '<br>') + '</p>';
+                        }
+                        if (lienPdf) {
+                            detailsHtml += '<a href="' + lienPdf + '" target="_blank" class="inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3 py-1.5 rounded text-[11px] shadow-sm transition-colors mt-1">' + texteLien + '</a>';
+                        }
+                        detailsHtml += '</div>';
+                    }
+                    
+                    div.innerHTML = '<div class="flex justify-between items-center ' + (aDuContenu ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
                             '<div class="flex items-baseline gap-3 min-w-0">' +
                                 '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
                                 '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
                             '</div>' +
                             badgeDecouvrir +
-                        '</div>' +
-                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed"><p>' + desc.replace(/\n/g, '<br>') + '</p></div>' : '');
+                        '</div>' + detailsHtml;
                     
                     container.appendChild(div);
                     
                     var trigger = document.getElementById('trigger-' + detailsId);
-                    if (trigger && desc) {
+                    if (trigger && aDuContenu) {
                         trigger.addEventListener('click', function() {
                             var el = document.getElementById(detailsId);
                             if (el) el.classList.toggle('hidden');
@@ -528,7 +546,31 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             loadAllData();
+            switchLanguage(currentLanguage);
         });
+
+        function formaterDateMeteo(texteDate, lang) {
+            var texteComplet = texteDate;
+            if (texteDate.indexOf('2027') === -1) {
+                texteComplet = texteDate + ' 2027';
+            }
+            var moisFR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            var parts = texteComplet.toLowerCase().split(' ');
+            var jourNum = null;
+            var moisIndex = -1;
+            var anneeNum = 2027;
+            for (var i = 0; i < parts.length; i++) {
+                if (!isNaN(parts[i]) && parts[i].length <= 2) jourNum = parseInt(parts[i], 10);
+                var idx = moisFR.indexOf(parts[i]);
+                if (idx !== -1) moisIndex = idx;
+                if (!isNaN(parts[i]) && parts[i].length === 4) anneeNum = parseInt(parts[i], 10);
+            }
+            if (jourNum === null || moisIndex === -1) return texteDate;
+            var dateObj = new Date(anneeNum, moisIndex, jourNum);
+            var codeLangue = lang === 'DE' ? 'de-DE' : 'fr-FR';
+            var options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            return new Intl.DateTimeFormat(codeLangue, options).format(dateObj);
+        }
     </script>
 </body>
 </html>
