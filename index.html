@@ -291,69 +291,74 @@
         }
 
         function createTile(p) {
-            var tile = document.createElement('div');
-            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[115px]";
-            tile.onclick = function() { openModal(p); };
+    var tile = document.createElement('div');
+    tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[140px]";
+    tile.onclick = function() { openModal(p); };
 
-            // Drapeau en haut à droite
-            var flagSpan = document.createElement('span');
-            flagSpan.className = "absolute top-1 right-1 text-xs select-none";
-            flagSpan.innerText = getDrapeau(p.Club);
-            tile.appendChild(flagSpan);
+    // Drapeau en haut à droite
+    var flagSpan = document.createElement('span');
+    flagSpan.className = "absolute top-1 right-1 text-xs select-none";
+    flagSpan.innerText = getDrapeau(p.Club);
+    tile.appendChild(flagSpan);
 
-            // Conteneur de photos / badges (Effet trombinoscope de couples juxtaposés)
-            var photosContainer = document.createElement('div');
-            photosContainer.className = "flex -space-x-2.5 mt-1 mb-2 justify-center items-center h-10";
-            tile.appendChild(photosContainer);
+    // CONTENEUR PHOTOS AGRANDI (w-14 / h-14)
+    var photosContainer = document.createElement('div');
+    photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
+    tile.appendChild(photosContainer);
 
-            var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
-            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
+    var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
+    var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
-            // Image 1 : Participant principal
-            if (p.Photo && p.Photo.startsWith('http')) {
-                var img1 = document.createElement('img');
-                img1.src = p.Photo;
-                img1.className = "w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10";
-                // En cas d'échec de chargement, on remplace l'image par son badge d'initiale en JS propre
-                img1.onerror = function() {
-                    if (img1.parentNode) {
-                        img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
-                    }
-                };
-                photosContainer.appendChild(img1);
-            } else {
-                photosContainer.appendChild(createInitialBadge1(initial1));
+    // 1ère Photo : Participant Principal (Maximisé)
+    if (p.Photo && p.Photo.startsWith('http')) {
+        var img1 = document.createElement('img');
+        img1.src = p.Photo;
+        img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm flex-shrink-0 z-10 bg-slate-100";
+        img1.onerror = function() {
+            if (img1.parentNode) {
+                var badge = createInitialBadge1(initial1);
+                badge.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-10";
+                img1.parentNode.replaceChild(badge, img1);
             }
+        };
+        photosContainer.appendChild(img1);
+    } else {
+        var badge = createInitialBadge1(initial1);
+        badge.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-10";
+        photosContainer.appendChild(badge);
+    }
 
-            // Image 2 : Conjoint (Génère systématiquement son badge orange)
-            if (p.Conjoint) {
-                photosContainer.appendChild(createInitialBadge2(initial2));
-            }
+    // 2ème Photo : Conjoint (Maximisé)
+    if (p.Conjoint) {
+        var badge2 = createInitialBadge2(initial2 || '👫');
+        badge2.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-0";
+        photosContainer.appendChild(badge2);
+    }
 
-            // Textes descriptifs (Nom, Prénom, Conjoint sous forme de texte)
-            var textContainer = document.createElement('div');
-            textContainer.className = "w-full overflow-hidden";
+    // Zone de textes descriptifs
+    var textContainer = document.createElement('div');
+    textContainer.className = "w-full overflow-hidden";
 
-            var nomDiv = document.createElement('div');
-            nomDiv.className = "text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase";
-            nomDiv.innerText = p.Nom || '';
-            textContainer.appendChild(nomDiv);
+    var nomDiv = document.createElement('div');
+    nomDiv.className = "text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase";
+    nomDiv.innerText = p.Nom || '';
+    textContainer.appendChild(nomDiv);
 
-            var prenomDiv = document.createElement('div');
-            prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
-            prenomDiv.innerText = p.Prénom || '';
-            textContainer.appendChild(prenomDiv);
+    var prenomDiv = document.createElement('div');
+    prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
+    prenomDiv.innerText = p.Prénom || '';
+    textContainer.appendChild(prenomDiv);
 
-            if (p.Conjoint) {
-                var conjointDiv = document.createElement('div');
-                conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
-                conjointDiv.innerText = "👫 " + p.Conjoint;
-                textContainer.appendChild(conjointDiv);
-            }
+    if (p.Conjoint) {
+        var conjointDiv = document.createElement('div');
+        conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
+        conjointDiv.innerText = "👫 " + p.Conjoint;
+        textContainer.appendChild(conjointDiv);
+    }
 
-            tile.appendChild(textContainer);
-            return tile;
-        }
+    tile.appendChild(textContainer);
+    return tile;
+}
 
         function openModal(p) {
             document.getElementById('modal-title').innerText = (p.Prénom || '') + ' ' + (p.Nom || '');
