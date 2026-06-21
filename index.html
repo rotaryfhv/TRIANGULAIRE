@@ -9,8 +9,6 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .tab-button.active { border-bottom: 3px solid #1a365d; color: #1a365d; font-weight: bold; }
-        .club-jump-bar { display: none; }
-        .club-jump-bar.active { display: flex; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans pb-20">
@@ -20,29 +18,22 @@
     </div>
 
     <header class="bg-blue-950 text-white text-center py-4 sticky top-0 shadow-md z-40">
-        <h1 clas<h1 class="text-lg font-bold tracking-wide flex items-center justify-center gap-2">
-    <img src="rotary-logo.png" alt="Rotary" class="w-6 h-6">
-    Triangulaire - Lille
-</h1>
+        <h1 class="text-lg font-bold tracking-wide">🤝 Triangulaire - Lille</h1>
     </header>
 
-    <main class="p-4 max-w-md mx-auto">
+    <main class="p-2 max-w-lg mx-auto">
         
         <section id="tab-participants" class="tab-content active">
-            <div class="flex flex-wrap justify-between items-center gap-2 mb-4 bg-white p-2 rounded shadow-sm">
-                <span class="text-xs font-semibold text-gray-500">Trier par :</span>
-                <div class="flex gap-1 flex-wrap">
-                    <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-2.5 py-1 bg-blue-900 text-white rounded text-xs">A-Z (Nom)</button>
-                    <button id="btn-sort-club" onclick="changeSort('club')" class="px-2.5 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Club</button>
-                    <button id="btn-sort-groupe" onclick="changeSort('groupe')" class="px-2.5 py-1 bg-gray-200 text-gray-700 rounded text-xs">Par Groupe</button>
+            <div class="bg-white p-2 rounded shadow-sm mb-3 flex flex-col gap-2">
+                <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Filtrer & Trier par :</span>
+                <div class="grid grid-cols-3 gap-1">
+                    <button id="btn-sort-alpha" onclick="changeSort('alpha')" class="px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium">A-Z (Nom)</button>
+                    <button id="btn-sort-club" onclick="changeSort('club')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Club</button>
+                    <button id="btn-sort-group" onclick="changeSort('group')" class="px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium">Par Groupe</button>
                 </div>
             </div>
-            <div id="club-jump-bar" class="club-jump-bar gap-2 mb-4 sticky top-[60px] z-30">
-                <button onclick="jumpToCountry('FR')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇫🇷 France</button>
-                <button onclick="jumpToCountry('DE')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇩🇪 Allemagne</button>
-                <button onclick="jumpToCountry('BE')" class="flex-1 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold py-2 rounded shadow-sm flex items-center justify-center gap-1">🇧🇪 Belgique</button>
-            </div>
-            <div id="participants-list"></div>
+            
+            <div id="participants-container"></div>
         </section>
 
         <section id="tab-programme" class="tab-content">
@@ -64,6 +55,28 @@
 
     </main>
 
+    <div id="modal-details" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4 animate-fade-in" onclick="closeModal()">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform" onclick="event.stopPropagation()">
+            <div class="bg-blue-950 p-4 text-white relative">
+                <span id="modal-flag" class="absolute top-3 right-3 text-xl"></span>
+                <h3 id="modal-title" class="font-bold text-base pr-8"></h3>
+                <p id="modal-club" class="text-xs text-blue-200 uppercase tracking-widest mt-0.5 font-semibold"></p>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="flex justify-center gap-4 py-2" id="modal-photos-container"></div>
+                <div class="border-t border-gray-100 pt-3 space-y-2 text-sm text-gray-700">
+                    <div id="modal-conjoint" class="flex items-center gap-2"></div>
+                    <div id="modal-profession" class="flex items-center gap-2"></div>
+                    <div id="modal-role" class="flex items-center gap-2"></div>
+                    <div id="modal-phone" class="pt-2"></div>
+                </div>
+                <button onclick="closeModal()" class="w-full mt-2 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-xs transition-colors">
+                    Fermer la fiche
+                </button>
+            </div>
+        </div>
+    </div>
+
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around shadow-lg z-40">
         <button onclick="switchTab('tab-participants')" class="tab-button active flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
             <span class="text-lg">👥</span> Participants
@@ -82,18 +95,14 @@
         var dataParticipants = [];
         var dataProgramme = [];
         var dataUrgence = [];
-        // Détecte la langue du téléphone/navigateur
-        var userLang = navigator.language || navigator.userLanguage; 
-
-        // Si la langue commence par 'de' (de-DE, de-AT, de-CH...), on bascule en allemand, sinon français par défaut
-        var currentLanguage = userLang.startsWith('de') ? 'DE' : 'FR';
+        var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
         function convertDriveUrl(url) {
             if (!url || url.indexOf('drive.google.com') === -1) return url;
             var match = url.match(/\/file\/d\/([^\/]+)/);
             if (match && match[1]) {
-                return 'https://lh3.googleusercontent.com/d/' + match[1] + '=w200';
+                return 'https://docs.google.com/uc?export=view&id=' + match[1];
             }
             return url;
         }
@@ -106,9 +115,7 @@
                 if (valStr.indexOf('Date(') !== -1) {
                     var m = valStr.match(/\d+/g);
                     if (m && m.length >= 5) {
-                        var hrs = m[3].length === 1 ? '0' + m[3] : m[3];
-                        var mins = m[4].length === 1 ? '0' + m[4] : m[4];
-                        return hrs + ':' + mins;
+                        return m[3].padStart(2, '0') + ':' + m[4].padStart(2, '0');
                     }
                 }
                 return cell.v;
@@ -116,63 +123,69 @@
             return '';
         }
 
+        // Associe un drapeau emoji en fonction du nom du club
+        function getDrapeau(clubName) {
+            if (!clubName) return '❓';
+            var c = clubName.toLowerCase();
+            if (c.indexOf('fourm') !== -1) return '🇫🇷';
+            if (c.indexOf('gumm') !== -1) return '🇩🇪';
+            if (c.indexOf('nivel') !== -1) return '🇧🇪';
+            return '🇪🇺';
+        }
+
         async function fetchSheetByName(sheetName) {
             var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(sheetName);
             var response = await fetch(url);
             var text = await response.text();
             var match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);/);
-            if (!match) throw new Error("Impossible de lire l'onglet : " + sheetName);
+            if (!match) throw new Error("Erreur de lecture : " + sheetName);
             return JSON.parse(match[1]).table.rows;
         }
 
         async function loadAllData() {
             try {
+                // 1. CHARGEMENT PARTICIPANTS
                 var rowsPart = await fetchSheetByName('Participants');
                 dataParticipants = [];
-                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint', 'Photo_Conjoint', 'Groupe'];
+                var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
 
                 for (var r = 0; r < rowsPart.length; r++) {
                     var row = rowsPart[r];
                     if (row && row.c) {
                         var col1 = cleanValue(row.c[1]);
-                        if (!col1 || col1 === 'Nom') continue;
+                        if (!col1 || col1 === 'Nom') continue; 
 
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
                             var val = cleanValue(row.c[c]);
-                            if (keysPart[c] === 'Photo' || keysPart[c] === 'Photo_Conjoint') val = convertDriveUrl(val);
+                            if (keysPart[c] === 'Photo') val = convertDriveUrl(val);
                             item[keysPart[c]] = val;
                         }
                         dataParticipants.push(item);
                     }
                 }
 
-               var rowsProg = await fetchSheetByName('Programme');
-dataProgramme = [];
-for (var r = 0; r < rowsProg.length; r++) {
-    var row = rowsProg[r];
-    if (!row || !row.c) continue;
+                // 2. CHARGEMENT PROGRAMME
+                var rowsProg = await fetchSheetByName('Programme');
+                dataProgramme = [];
+                for (var r = 0; r < rowsProg.length; r++) {
+                    var row = rowsProg[r];
+                    if (!row || !row.c) continue;
+                    var colA = cleanValue(row.c[0]);
+                    var colB = cleanValue(row.c[1]);
+                    if (colA === 'Heure' || colA === 'Francais') continue;
+                    if (colA || colB) {
+                        dataProgramme.push({
+                            Heure: colA,
+                            Lieu_FR: colB,
+                            Description_FR: cleanValue(row.c[2]),
+                            Lieu_DE: cleanValue(row.c[3]),
+                            Description_DE: cleanValue(row.c[4])
+                        });
+                    }
+                }
 
-    var colA = cleanValue(row.c[0]); // Heure
-    var colB = cleanValue(row.c[1]); // Lieu_FR
-
-    if (colA === 'Heure' || colA === 'Francais') continue;
-
-    if (colA || colB) {
-        dataProgramme.push({
-            Heure: colA,
-            Lieu_FR: colB,
-            Description_FR: cleanValue(row.c[2]),
-            Lien_FR: row.c[3] ? cleanValue(row.c[3]) : '',        // Colonne D
-            Texte_FR: row.c[4] ? cleanValue(row.c[4]) : '',       // Colonne E
-            Lieu_DE: cleanValue(row.c[5]),                        // Colonne F
-            Description_DE: cleanValue(row.c[6]),                 // Colonne G
-            Lien_DE: row.c[7] ? cleanValue(row.c[7]) : '',        // Colonne H
-            Texte_DE: row.c[8] ? cleanValue(row.c[8]) : ''         // Colonne I
-        });
-    }
-}
-
+                // 3. CHARGEMENT URGENCE
                 try {
                     var rowsUrg = await fetchSheetByName('Urgence');
                     dataUrgence = [];
@@ -181,9 +194,7 @@ for (var r = 0; r < rowsProg.length; r++) {
                         if (row && row.c) {
                             var nomUrg = cleanValue(row.c[0]);
                             var telUrg = cleanValue(row.c[1]);
-                            if (nomUrg && nomUrg !== 'Nom') {
-                                dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
-                            }
+                            if (nomUrg && nomUrg !== 'Nom') dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
                         }
                     }
                 } catch (e) {
@@ -194,9 +205,7 @@ for (var r = 0; r < rowsProg.length; r++) {
                         if (row && row.c) {
                             var nomUrg = cleanValue(row.c[0]);
                             var telUrg = cleanValue(row.c[1]);
-                            if (nomUrg && nomUrg !== 'Nom') {
-                                dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
-                            }
+                            if (nomUrg && nomUrg !== 'Nom') dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
                         }
                     }
                 }
@@ -208,280 +217,211 @@ for (var r = 0; r < rowsProg.length; r++) {
                 document.getElementById('loading').style.display = 'none';
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = "Erreur de chargement. Vérifiez les onglets.";
+                document.getElementById('loading').innerText = "Erreur de chargement des onglets Google Sheets.";
             }
         }
 
         function renderParticipants() {
-            var listEl = document.getElementById('participants-list');
-            if (!listEl) return;
-            listEl.innerHTML = '';
+            var container = document.getElementById('participants-container');
+            if (!container) return;
+            container.innerHTML = '';
             
             var sorted = dataParticipants.slice();
+
             if (currentSort === 'alpha') {
+                // Affichage direct d'une unique grande grille globale A-Z
                 sorted.sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
+                var grid = createGridElement();
                 for (var i = 0; i < sorted.length; i++) {
-                    listEl.appendChild(createParticipantCard(sorted[i], false));
+                    grid.appendChild(createTile(sorted[i]));
                 }
-            } else if (currentSort === 'groupe') {
-                var groupes = {};
+                container.appendChild(grid);
+                
+            } else if (currentSort === 'club') {
+                // Groupement par Club (Pas de mention du club sur la carte)
+                var groups = {};
                 for (var i = 0; i < sorted.length; i++) {
-                    var p = sorted[i];
-                    var g = p.Groupe || 'Sans Groupe';
-                    if (!groupes[g]) groupes[g] = [];
-                    groupes[g].push(p);
+                    var c = sorted[i].Club || 'Sans Club';
+                    if (!groups[c]) groups[c] = [];
+                    groups[c].push(sorted[i]);
                 }
-                var groupeKeys = Object.keys(groupes).sort();
-                for (var k = 0; k < groupeKeys.length; k++) {
-                    var groupe = groupeKeys[k];
-                    var header = document.createElement('h3');
-                    header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
-                    header.textContent = 'Groupe ' + groupe;
-                    listEl.appendChild(header);
-
-                    groupes[groupe].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < groupes[groupe].length; j++) {
-                        listEl.appendChild(createParticipantCard(groupes[groupe][j], false));
+                for (var key in groups) {
+                    container.appendChild(createGroupHeader(key));
+                    var grid = createGridElement();
+                    groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
+                    for (var j = 0; j < groups[key].length; j++) {
+                        grid.appendChild(createTile(groups[key][j]));
                     }
+                    container.appendChild(grid);
                 }
-            } else {
-                var clubs = {};
+                
+            } else if (currentSort === 'group') {
+                // Groupement par Rôle / Statut (Ex: Vice-Président, Membre...)
+                var groups = {};
                 for (var i = 0; i < sorted.length; i++) {
-                    var p = sorted[i];
-                    var c = p.Club || 'Sans Club';
-                    if (!clubs[c]) clubs[c] = [];
-                    clubs[c].push(p);
+                    var g = sorted[i].Role || 'Participant';
+                    if (!groups[g]) groups[g] = [];
+                    groups[g].push(sorted[i]);
                 }
-                for (var club in clubs) {
-                    var header = document.createElement('h3');
-                    header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
-                    header.textContent = getClubFlag(club) + ' ' + club;
-                    var country = getClubCountry(club);
-                    if (country && !document.getElementById('club-anchor-' + country)) {
-                        header.id = 'club-anchor-' + country;
+                for (var key in groups) {
+                    container.appendChild(createGroupHeader(key));
+                    var grid = createGridElement();
+                    groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
+                    for (var j = 0; j < groups[key].length; j++) {
+                        grid.appendChild(createTile(groups[key][j]));
                     }
-                    listEl.appendChild(header);
-                    
-                    clubs[club].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < clubs[club].length; j++) {
-                        listEl.appendChild(createParticipantCard(clubs[club][j], true));
-                    }
+                    container.appendChild(grid);
                 }
             }
         }
 
-        // Génère un SVG avatar en base64 sans apostrophes dans le SVG
-        function makeAvatarSvg(initiale) {
-            var letter = initiale || '?';
-            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">'
-                    + '<circle cx="24" cy="24" r="24" fill="#cbd5e1"/>'
-                    + '<text x="24" y="29" font-size="15" font-family="sans-serif" font-weight="bold" fill="#64748b" text-anchor="middle">' + letter + '</text>'
-                    + '</svg>';
-            return 'data:image/svg+xml;base64,' + btoa(svg);
+        function createGridElement() {
+            var grid = document.createElement('div');
+            grid.className = "grid grid-cols-3 gap-2 my-2";
+            return grid;
         }
 
-        // Retourne le drapeau associé au club selon sa ville
-        function getClubFlag(clubName) {
-            var name = (clubName || '').toUpperCase();
-            if (name.indexOf('FOURMIES') !== -1 || name.indexOf('HIRSON') !== -1 || name.indexOf('VERVINS') !== -1) return '🇫🇷';
-            if (name.indexOf('GUMMERSBACH') !== -1) return '🇩🇪';
-            if (name.indexOf('NIVELLES') !== -1) return '🇧🇪';
-            return '';
+        function createGroupHeader(title) {
+            var header = document.createElement('h3');
+            header.className = "text-xs font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
+            header.innerText = title;
+            return header;
         }
 
-        // Retourne le code pays associé au club selon sa ville
-        function getClubCountry(clubName) {
-            var name = (clubName || '').toUpperCase();
-            if (name.indexOf('FOURMIES') !== -1 || name.indexOf('HIRSON') !== -1 || name.indexOf('VERVINS') !== -1) return 'FR';
-            if (name.indexOf('GUMMERSBACH') !== -1) return 'DE';
-            if (name.indexOf('NIVELLES') !== -1) return 'BE';
-            return '';
-        }
+        function createTile(p) {
+            var tile = document.createElement('div');
+            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95";
+            
+            // Événement d'ouverture au clic
+            tile.onclick = function() { openModal(p); };
 
-        function createParticipantCard(p, masqueClub) {
-            var div = document.createElement('div');
-            div.className = "bg-white p-3 rounded-lg shadow-sm border border-gray-100 my-2 flex items-center gap-3";
+            // Code SVG d'un avatar neutre
+            var av1 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><text x="20" y="24" font-size="12" font-family="sans-serif" font-weight="bold" fill="%2394a3b8" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
+            var av2 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23fed7aa"/><text x="20" y="24" font-size="12" font-family="sans-serif" font-weight="bold" fill="%23f97316" text-anchor="middle">' + (p.Conjoint ? p.Conjoint.charAt(0) : '👫') + '</text></svg>';
 
-            var initiale = p.Prénom ? p.Prénom.charAt(0).toUpperCase() : '?';
-            var avatarSrc = makeAvatarSvg(initiale);
+            var photo1 = p.Photo && p.Photo.indexOf('http') !== -1 ? p.Photo : av1;
 
-            // Créer l'élément image via DOM (évite tout problème d'échappement)
-            var img = document.createElement('img');
-            img.className = 'w-16 h-16 rounded-full object-cover bg-gray-200 flex-shrink-0';
-            img.alt = '';
-
-            if (p.Photo && p.Photo.indexOf('http') !== -1) {
-                img.src = p.Photo;
-                img.onerror = function() { this.src = avatarSrc; };
-            } else {
-                img.src = avatarSrc;
-            }
-
-            // Conteneur texte
-            var info = document.createElement('div');
-            info.className = 'flex-1 min-w-0';
-
-            // Ligne Nom + Téléphone dans la continuité
-            var nomLigne = document.createElement('div');
-            nomLigne.className = 'flex items-baseline gap-2 flex-wrap';
-
-            var nomEl = document.createElement('span');
-            nomEl.className = 'font-bold text-gray-950 text-sm';
-            nomEl.textContent = (p.Nom || '') + ' ' + (p.Prénom || '') + (p.Groupe ? ' (' + p.Groupe + ')' : '');
-            nomLigne.appendChild(nomEl);
-
-            if (p.Tél) {
-                var telEl = document.createElement('span');
-                telEl.className = 'text-[11px] text-emerald-600 font-mono font-bold';
-                telEl.textContent = '📞 ' + p.Tél;
-                nomLigne.appendChild(telEl);
-            }
-            info.appendChild(nomLigne);
-
-            // Ligne Profession + Role
-            if (p.Profession || p.Role) {
-                var profEl = document.createElement('div');
-                profEl.className = 'text-xs text-gray-500 mt-0.5';
-                var profParts = [];
-                if (p.Profession) profParts.push(p.Profession);
-                if (p.Role) profParts.push('🎗️ ' + p.Role);
-                profEl.textContent = profParts.join(' • ');
-                info.appendChild(profEl);
-            }
-
-            if (!masqueClub && p.Club) {
-                var clubEl = document.createElement('div');
-                clubEl.className = 'text-[9px] text-blue-900 font-bold mt-1 uppercase tracking-wider';
-                clubEl.textContent = p.Club;
-                info.appendChild(clubEl);
-            }
-
-            div.appendChild(img);
-            div.appendChild(info);
-
-            // Bloc Conjoint : photo + prénom, aligné à droite
+            // Construction du bloc photo (Double si conjoint existant)
+            var photosHtml = '';
             if (p.Conjoint) {
-                var conjointWrap = document.createElement('div');
-                conjointWrap.className = 'flex flex-col items-center flex-shrink-0 ml-2';
-
-                var conjointImg = document.createElement('img');
-                conjointImg.className = 'w-12 h-12 rounded-full object-cover bg-gray-200';
-                conjointImg.alt = '';
-
-                var conjointInitiale = p.Conjoint.charAt(0).toUpperCase();
-                var conjointAvatarSrc = makeAvatarSvg(conjointInitiale);
-
-                if (p.Photo_Conjoint && p.Photo_Conjoint.indexOf('http') !== -1) {
-                    conjointImg.src = p.Photo_Conjoint;
-                    conjointImg.onerror = function() { this.src = conjointAvatarSrc; };
-                } else {
-                    conjointImg.src = conjointAvatarSrc;
-                }
-
-                var conjointNom = document.createElement('div');
-                conjointNom.className = 'text-[10px] text-gray-500 font-medium mt-0.5 text-center whitespace-nowrap';
-                conjointNom.textContent = '' + p.Conjoint;
-
-                conjointWrap.appendChild(conjointImg);
-                conjointWrap.appendChild(conjointNom);
-                div.appendChild(conjointWrap);
+                photosHtml = '<div class="flex -space-x-2 mt-1 mb-2 justify-center">' +
+                    '<img src="' + photo1 + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" onerror="this.src=\'' + av1 + '\'" />' +
+                    '<img src="' + av2 + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" />' +
+                '</div>';
+            } else {
+                photosHtml = '<div class="my-1 justify-center flex">' +
+                    '<img src="' + photo1 + '" class="w-10 h-10 rounded-full object-cover shadow-xs" onerror="this.src=\'' + av1 + '\'" />' +
+                '</div>';
             }
 
-            return div;
+            var flag = getDrapeau(p.Club);
+            var nomConjointHtml = p.Conjoint ? '<div class="text-[9px] text-gray-400 font-medium truncate max-w-full">👫 ' + p.Conjoint + '</div>' : '';
+
+            tile.innerHTML = '<span class="absolute top-1 right-1 text-xs select-none">' + flag + '</span>' +
+                photosHtml +
+                '<div class="text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase">' + (p.Nom || '') + '</div>' +
+                '<div class="text-[11px] font-medium text-gray-700 leading-tight truncate w-full mb-0.5">' + (p.Prénom || '') + '</div>' +
+                nomConjointHtml;
+
+            return tile;
+        }
+
+        // FENÊTRE DE DIALOGUE (MODALE)
+        function openModal(p) {
+            document.getElementById('modal-title').innerText = (p.Prénom || '') + ' ' + (p.Nom || '');
+            document.getElementById('modal-club').innerText = p.Club || 'Sans Club';
+            document.getElementById('modal-flag').innerText = getDrapeau(p.Club);
+
+            var av1 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="%23e2e8f0"/><text x="28" y="34" font-size="16" font-family="sans-serif" font-weight="bold" fill="%2394a3b8" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
+            var av2 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="%23fed7aa"/><text x="28" y="34" font-size="16" font-family="sans-serif" font-weight="bold" fill="%23f97316" text-anchor="middle">' + (p.Conjoint ? p.Conjoint.charAt(0) : '👫') + '</text></svg>';
+            var photo1 = p.Photo && p.Photo.indexOf('http') !== -1 ? p.Photo : av1;
+
+            var imgHtml = '<div class="text-center"><img src="' + photo1 + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto" onerror="this.src=\'' + av1 + '\'"><p class="text-[10px] text-gray-400 mt-1">Participant</p></div>';
+            if (p.Conjoint) {
+                imgHtml += '<div class="text-center"><img src="' + av2 + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto"><p class="text-[10px] text-gray-400 mt-1">Conjoint</p></div>';
+            }
+            document.getElementById('modal-photos-container').innerHTML = imgHtml;
+
+            // Remplissage des métadonnées
+            document.getElementById('modal-conjoint').innerHTML = p.Conjoint ? '<strong>👫 Conjoint :</strong> ' + p.Conjoint : '';
+            document.getElementById('modal-profession').innerHTML = p.Profession ? '<strong>💼 Profession :</strong> ' + p.Profession : '<strong>💼 Profession :</strong> Non renseignée';
+            document.getElementById('modal-role').innerHTML = p.Role ? '<strong>🛡️ Rôle :</strong> <span class="text-amber-600 font-bold">' + p.Role + '</span>' : '<strong>🛡️ Rôle :</strong> Participant';
+            
+            // Numéro de téléphone cliquable
+            var phoneEl = document.getElementById('modal-phone');
+            if (p.Tél) {
+                phoneEl.innerHTML = '<a href="tel:' + p.Tél + '" class="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition-colors border border-emerald-200">🤙 Appeler le ' + p.Tél + '</a>';
+            } else {
+                phoneEl.innerHTML = '<div class="text-center text-xs text-gray-400 italic py-2">Pas de numéro de téléphone enregistré</div>';
+            }
+
+            var m = document.getElementById('modal-details');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeModal() {
+            var m = document.getElementById('modal-details');
+            m.classList.remove('flex');
+            m.classList.add('hidden');
         }
 
         function changeSort(type) {
             currentSort = type;
-            var activeClass = 'px-3 py-1 bg-blue-900 text-white rounded text-xs';
-            var inactiveClass = 'px-3 py-1 bg-gray-200 text-gray-700 rounded text-xs';
-            document.getElementById('btn-sort-alpha').className = type === 'alpha' ? activeClass : inactiveClass;
-            document.getElementById('btn-sort-club').className = type === 'club' ? activeClass : inactiveClass;
-            document.getElementById('btn-sort-groupe').className = type === 'groupe' ? activeClass : inactiveClass;
-            var jumpBar = document.getElementById('club-jump-bar');
-            if (jumpBar) {
-                if (type === 'club') jumpBar.classList.add('active');
-                else jumpBar.classList.remove('active');
-            }
+            document.getElementById('btn-sort-alpha').className = type === 'alpha' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
+            document.getElementById('btn-sort-club').className = type === 'club' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
+            document.getElementById('btn-sort-group').className = type === 'group' ? 'px-2 py-1.5 bg-blue-900 text-white rounded text-[11px] font-medium' : 'px-2 py-1.5 bg-gray-200 text-gray-700 rounded text-[11px] font-medium';
             renderParticipants();
         }
 
-        function jumpToCountry(country) {
-            var el = document.getElementById('club-anchor-' + country);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        function renderProgramme() {
+            var container = document.getElementById('programme-container');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            for (var i = 0; i < dataProgramme.length; i++) {
+                (function(index) {
+                    var item = dataProgramme[index];
+                    var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
+                    
+                    if (estTitreJour) {
+                        var dayHeader = document.createElement('div');
+                        dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
+                        dayHeader.innerText = item.Heure;
+                        container.appendChild(dayHeader);
+                        return;
+                    }
+
+                    var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
+                    var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
+                    
+                    var detailsId = 'details-' + index;
+                    var div = document.createElement('div');
+                    div.className = "bg-white border-b border-gray-100 p-4";
+                    
+                    var badgeDecouvrir = desc ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
+                    
+                    div.innerHTML = '<div class="flex justify-between items-center ' + (desc ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
+                            '<div class="flex items-baseline gap-3 min-w-0">' +
+                                '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
+                                '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
+                            '</div>' +
+                            badgeDecouvrir +
+                        '</div>' +
+                        (desc ? '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed"><p>' + desc.replace(/\n/g, '<br>') + '</p></div>' : '');
+                    
+                    container.appendChild(div);
+                    
+                    var trigger = document.getElementById('trigger-' + detailsId);
+                    if (trigger && desc) {
+                        trigger.addEventListener('click', function() {
+                            var el = document.getElementById(detailsId);
+                            if (el) el.classList.toggle('hidden');
+                        });
+                    }
+                })(i);
+            }
         }
-
-       function renderProgramme() {
-    var container = document.getElementById('programme-container');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    for (var i = 0; i < dataProgramme.length; i++) {
-        (function(index) {
-            var item = dataProgramme[index];
-            var estTitreJour = (item.Heure.indexOf(':') === -1 && item.Heure.length > 4);
-            
-if (estTitreJour) {
-    var dayHeader = document.createElement('div');
-    dayHeader.className = "bg-slate-800 text-white font-bold p-2 text-xs uppercase tracking-wider text-center mt-3 first:mt-0";
-    
-    // Traduction dynamique de la date selon la langue courante
-    dayHeader.innerText = formaterDateMeteo(item.Heure, currentLanguage);
-    
-    container.appendChild(dayHeader);
-    return;
-}
-
-            // Sélection des données selon la langue sélectionnée (FR ou DE)
-            var lieu = currentLanguage === 'FR' ? (item.Lieu_FR || '') : (item.Lieu_DE || '');
-            var desc = currentLanguage === 'FR' ? (item.Description_FR || '') : (item.Description_DE || '');
-            var lienPdf = currentLanguage === 'FR' ? (item.Lien_FR || '') : (item.Lien_DE || '');
-            
-            // Texte du bouton par défaut si la cellule du Google Sheets est vide
-            var texteParDefaut = currentLanguage === 'FR' ? '📄 Voir le document' : '📄 Dokument ansehen';
-            var texteLien = currentLanguage === 'FR' ? (item.Texte_FR || texteParDefaut) : (item.Texte_DE || texteParDefaut);
-            
-            var detailsId = 'details-' + index;
-            var div = document.createElement('div');
-            div.className = "bg-white border-b border-gray-100 p-4";
-            
-            var aDuContenu = desc || lienPdf;
-            var badgeDecouvrir = aDuContenu ? '<span class="text-gray-400 text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">▼ Détails</span>' : '';
-            
-            // Construction dynamique du bloc dépliant
-            var detailsHtml = '';
-            if (aDuContenu) {
-                detailsHtml += '<div id="' + detailsId + '" class="hidden mt-3 text-xs text-gray-600 bg-slate-50 p-3 rounded border-l-2 border-blue-900 leading-relaxed">';
-                if (desc) {
-                    detailsHtml += '<p class="mb-3">' + desc.replace(/\n/g, '<br>') + '</p>';
-                }
-                if (lienPdf) {
-                    detailsHtml += '<a href="' + lienPdf + '" target="_blank" class="inline-flex items-center gap-1.5 bg-blue-900 hover:bg-blue-950 text-white font-semibold px-3 py-1.5 rounded text-[11px] shadow-sm transition-colors mt-1">' +
-                                        texteLien +
-                                   '</a>';
-                }
-                detailsHtml += '</div>';
-            }
-            
-            div.innerHTML = '<div class="flex justify-between items-center ' + (aDuContenu ? 'cursor-pointer' : '') + ' font-medium" id="trigger-' + detailsId + '">' +
-                    '<div class="flex items-baseline gap-3 min-w-0">' +
-                        '<span class="text-blue-900 font-bold text-sm w-12 flex-shrink-0">' + (item.Heure || '') + '</span>' +
-                        '<span class="text-gray-900 text-sm font-semibold truncate">' + lieu + '</span>' +
-                    '</div>' +
-                    badgeDecouvrir +
-                '</div>' + detailsHtml;
-            
-            container.appendChild(div);
-            
-            var trigger = document.getElementById('trigger-' + detailsId);
-            if (trigger && aDuContenu) {
-                trigger.addEventListener('click', function() {
-                    var el = document.getElementById(detailsId);
-                    if (el) el.classList.toggle('hidden');
-                });
-            }
-        })(i);
-    }
-}
 
         function switchLanguage(lang) {
             currentLanguage = lang;
@@ -523,50 +463,7 @@ if (estTitreJour) {
 
         document.addEventListener("DOMContentLoaded", function() {
             loadAllData();
-            // Applique visuellement les couleurs sur les boutons FR/DE selon la langue détectée
-    switchLanguage(currentLanguage);
         });
-        function formaterDateMeteo(texteDate, lang) {
-    // Si l'année n'est pas écrite, on force 2027 pour la conversion (adapté à votre événement)
-    var texteComplet = texteDate;
-    if (texteDate.indexOf('2027') === -1) {
-        texteComplet = texteDate + ' 2027';
-    }
-
-    // Dictionnaire pour aider JavaScript à comprendre les mois en français écrit
-    var moisFR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    var parts = texteComplet.toLowerCase().split(' ');
-    
-    var jourNum = null;
-    var moisIndex = -1;
-    var anneeNum = 2027;
-
-    // Extraction du numéro du jour et du mois
-    for (var i = 0; i < parts.length; i++) {
-        if (!isNaN(parts[i]) && parts[i].length <= 2) {
-            jourNum = parseInt(parts[i], 10);
-        }
-        var idx = moisFR.indexOf(parts[i]);
-        if (idx !== -1) {
-            moisIndex = idx;
-        }
-        if (!isNaN(parts[i]) && parts[i].length === 4) {
-            anneeNum = parseInt(parts[i], 10);
-        }
-    }
-
-    // Si la conversion échoue, on renvoie le texte d'origine par sécurité
-    if (jourNum === null || moisIndex === -1) return texteDate;
-
-    // Création de l'objet Date JavaScript
-    var dateObj = new Date(anneeNum, moisIndex, jourNum);
-    
-    // Formatage natif selon la langue (FR ou DE)
-    var codeLangue = lang === 'DE' ? 'de-DE' : 'fr-FR';
-    var options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-    
-    return new Intl.DateTimeFormat(codeLangue, options).format(dateObj);
-}
     </script>
 </body>
 </html>
