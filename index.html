@@ -99,12 +99,12 @@
         var currentSort = 'alpha';
 
         function convertDriveUrl(url) {
-            if (!url || url.indexOf('drive.google.com') === -1) return url;
+            if (!url || url.indexOf('drive.google.com') === -1) return '';
             var match = url.match(/\/file\/d\/([^\/]+)/);
             if (match && match[1]) {
                 return 'https://docs.google.com/uc?export=view&id=' + match[1];
             }
-            return url;
+            return '';
         }
 
         function cleanValue(cell) {
@@ -124,7 +124,7 @@
         }
 
         function getDrapeau(clubName) {
-            if (!clubName) return '❓';
+            if (!clubName) return '🇪🇺';
             var c = clubName.toLowerCase();
             if (c.indexOf('fourm') !== -1) return '🇫🇷';
             if (c.indexOf('gumm') !== -1) return '🇩🇪';
@@ -227,9 +227,7 @@
             if (currentSort === 'alpha') {
                 sorted.sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                 var grid = createGridElement();
-                for (var i = 0; i < sorted.length; i++) {
-                    grid.appendChild(createTile(sorted[i]));
-                }
+                for (var i = 0; i < sorted.length; i++) grid.appendChild(createTile(sorted[i]));
                 container.appendChild(grid);
                 
             } else if (currentSort === 'club') {
@@ -243,9 +241,7 @@
                     container.appendChild(createGroupHeader(key));
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < groups[key].length; j++) {
-                        grid.appendChild(createTile(groups[key][j]));
-                    }
+                    for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j]));
                     container.appendChild(grid);
                 }
                 
@@ -260,9 +256,7 @@
                     container.appendChild(createGroupHeader(key));
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < groups[key].length; j++) {
-                        grid.appendChild(createTile(groups[key][j]));
-                    }
+                    for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j]));
                     container.appendChild(grid);
                 }
             }
@@ -283,39 +277,46 @@
 
         function createTile(p) {
             var tile = document.createElement('div');
-            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95";
+            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[110px]";
             tile.onclick = function() { openModal(p); };
 
-            var av1 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e2e8f0"/><text x="20" y="24" font-size="12" font-family="sans-serif" font-weight="bold" fill="%2394a3b8" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
-            var av2 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23fed7aa"/><text x="20" y="24" font-size="12" font-family="sans-serif" font-weight="bold" fill="%23f97316" text-anchor="middle">' + (p.Conjoint ? p.Conjoint.charAt(0) : '👫') + '</text></svg>';
+            var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
+            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
 
-            var photo1 = (p.Photo && p.Photo.indexOf('http') !== -1) ? p.Photo : av1;
+            // Création graphique des pastilles d'initiales en HTML/CSS pur (garanti sans bug de guillemets)
+            var placeholder1 = '<div class="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs">' + initial1 + '</div>';
+            var placeholder2 = '<div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs">' + initial2 + '</div>';
 
+            // Logique de construction du bloc photo
             var photosHtml = '';
-            if (p.Conjoint) {
-                photosHtml = '<div class="flex -space-x-2 mt-1 mb-2 justify-center">' +
-                    '<img src="' + photo1 + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" />' +
-                    '<img src="' + av2 + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" />' +
-                '</div>';
+            if (p.Photo && p.Photo.startsWith('http')) {
+                if (p.Conjoint) {
+                    photosHtml = '<div class="flex -space-x-3 mt-1 mb-2 justify-center">' +
+                        '<img src="' + p.Photo + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
+                        placeholder2 +
+                    '</div>';
+                } else {
+                    photosHtml = '<div class="my-1 justify-center flex">' +
+                        '<img src="' + p.Photo + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
+                    '</div>';
+                }
             } else {
-                photosHtml = '<div class="my-1 justify-center flex">' +
-                    '<img src="' + photo1 + '" class="w-10 h-10 rounded-full object-cover shadow-xs" />' +
-                '</div>';
+                // Aucun lien valide : Utilisation directe des ronds d'initiales natifs
+                if (p.Conjoint) {
+                    photosHtml = '<div class="flex -space-x-3 mt-1 mb-2 justify-center">' + placeholder1 + placeholder2 + '</div>';
+                } else {
+                    photosHtml = '<div class="my-1 justify-center flex">' + placeholder1 + '</div>';
+                }
             }
 
             var flag = getDrapeau(p.Club);
-            var nomConjointHtml = p.Conjoint ? '<div class="text-[9px] text-gray-400 font-medium truncate max-w-full">👫 ' + p.Conjoint + '</div>' : '';
+            var nomConjointHtml = p.Conjoint ? '<div class="text-[9px] text-gray-400 font-medium truncate max-w-full mt-0.5">👫 ' + p.Conjoint + '</div>' : '';
 
             tile.innerHTML = '<span class="absolute top-1 right-1 text-xs select-none">' + flag + '</span>' +
                 photosHtml +
                 '<div class="text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase">' + (p.Nom || '') + '</div>' +
-                '<div class="text-[11px] font-medium text-gray-700 leading-tight truncate w-full mb-0.5">' + (p.Prénom || '') + '</div>' +
+                '<div class="text-[10px] font-medium text-gray-600 leading-tight truncate w-full">' + (p.Prénom || '') + '</div>' +
                 nomConjointHtml;
-
-            // Sécurité anti-bug : Attache l'onerror directement après l'insertion pour éviter les crashs de guillemets
-            var imgs = tile.querySelectorAll('img');
-            if(imgs[0]) imgs[0].onerror = function() { this.src = av1; };
-            if(imgs[1]) imgs[1].onerror = function() { this.src = av2; };
 
             return tile;
         }
@@ -325,20 +326,27 @@
             document.getElementById('modal-club').innerText = p.Club || 'Sans Club';
             document.getElementById('modal-flag').innerText = getDrapeau(p.Club);
 
-            var av1 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="%23e2e8f0"/><text x="28" y="34" font-size="16" font-family="sans-serif" font-weight="bold" fill="%2394a3b8" text-anchor="middle">' + (p.Prénom ? p.Prénom.charAt(0) : '?') + '</text></svg>';
-            var av2 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="%23fed7aa"/><text x="28" y="34" font-size="16" font-family="sans-serif" font-weight="bold" fill="%23f97316" text-anchor="middle">' + (p.Conjoint ? p.Conjoint.charAt(0) : '👫') + '</text></svg>';
-            var photo1 = (p.Photo && p.Photo.indexOf('http') !== -1) ? p.Photo : av1;
+            var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
+            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
 
-            var imgHtml = '<div class="text-center"><img id="m-img1" src="' + photo1 + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto"><p class="text-[10px] text-gray-400 mt-1">Participant</p></div>';
-            if (p.Conjoint) {
-                imgHtml += '<div class="text-center"><img id="m-img2" src="' + av2 + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto"><p class="text-[10px] text-gray-400 mt-1">Conjoint</p></div>';
+            var placeholder1 = '<div class="w-14 h-14 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg mx-auto shadow-sm">' + initial1 + '</div>';
+            var placeholder2 = '<div class="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm">' + initial2 + '</div>';
+
+            var imgHtml = '';
+            if (p.Photo && p.Photo.startsWith('http')) {
+                imgHtml = '<div class="text-center">' +
+                    '<img src="' + p.Photo + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
+                    '<p class="text-[10px] text-gray-400 mt-1">Participant</p>' +
+                '</div>';
+            } else {
+                imgHtml = '<div class="text-center">' + placeholder1 + '<p class="text-[10px] text-gray-400 mt-1">Participant</p></div>';
             }
-            document.getElementById('modal-photos-container').innerHTML = imgHtml;
-            
-            // Sécurité onerror pour la modale
-            var mImg1 = document.getElementById('m-img1'); if(mImg1) mImg1.onerror = function() { this.src = av1; };
-            var mImg2 = document.getElementById('m-img2'); if(mImg2) mImg2.onerror = function() { this.src = av2; };
 
+            if (p.Conjoint) {
+                imgHtml += '<div class="text-center">' + placeholder2 + '<p class="text-[10px] text-gray-400 mt-1">Conjoint</p></div>';
+            }
+            
+            document.getElementById('modal-photos-container').innerHTML = imgHtml;
             document.getElementById('modal-conjoint').innerHTML = p.Conjoint ? '<strong>👫 Conjoint :</strong> ' + p.Conjoint : '';
             document.getElementById('modal-profession').innerHTML = p.Profession ? '<strong>💼 Profession :</strong> ' + p.Profession : '<strong>💼 Profession :</strong> Non renseignée';
             document.getElementById('modal-role').innerHTML = p.Role ? '<strong>🛡️ Rôle :</strong> <span class="text-amber-600 font-bold">' + p.Role + '</span>' : '<strong>🛡️ Rôle :</strong> Participant';
