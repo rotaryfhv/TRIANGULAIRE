@@ -78,13 +78,13 @@
     </div>
 
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around shadow-lg z-40">
-        <button onclick="switchTab('tab-participants')" class="tab-button active flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
+        <button onclick="switchTab('tab-participants', event)" class="tab-button active flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
             <span class="text-lg">👥</span> Participants
         </button>
-        <button onclick="switchTab('tab-programme')" class="tab-button flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
+        <button onclick="switchTab('tab-programme', event)" class="tab-button flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
             <span class="text-lg">📅</span> Programme
         </button>
-        <button onclick="switchTab('tab-urgence')" class="tab-button flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
+        <button onclick="switchTab('tab-urgence', event)" class="tab-button flex-1 py-3 text-xs text-gray-500 text-center flex flex-col items-center gap-1">
             <span class="text-lg">🚨</span> Urgences
         </button>
     </nav>
@@ -98,14 +98,16 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        // RETOUR À LA LOGIQUE DE CONVERSION DE LA PREMIÈRE VERSION
+        // Logique de conversion d'origine (strictement identique à votre première version fonctionnelle)
         function convertDriveUrl(url) {
-            if (!url || url.indexOf('drive.google.com') === -1) return '';
-            var match = url.match(/\/file\/d\/([^\/]+)/);
+            if (!url) return '';
+            var urlStr = String(url);
+            if (urlStr.indexOf('drive.google.com') === -1) return urlStr;
+            var match = urlStr.match(/\/file\/d\/([^\/]+)/);
             if (match && match[1]) {
                 return 'https://docs.google.com/uc?export=view&id=' + match[1];
             }
-            return '';
+            return urlStr;
         }
 
         function cleanValue(cell) {
@@ -144,7 +146,13 @@
 
         async function loadAllData() {
             try {
-                var rowsPart = await fetchSheetByName('Participants');
+                var rowsPart = [];
+                try {
+                    rowsPart = await fetchSheetByName('Participants');
+                } catch(e) {
+                    console.error("Erreur onglet Participants", e);
+                }
+                
                 dataParticipants = [];
                 var keysPart = ['Club', 'Nom', 'Prénom', 'Tél', 'Profession', 'Photo', 'Role', 'Conjoint'];
 
@@ -156,7 +164,7 @@
 
                         var item = {};
                         for (var c = 0; c < keysPart.length; c++) {
-                            var val = cleanValue(row.c[c]);
+                            var val = row.c[c] ? cleanValue(row.c[c]) : '';
                             if (keysPart[c] === 'Photo') val = convertDriveUrl(val);
                             item[keysPart[c]] = val;
                         }
@@ -164,7 +172,13 @@
                     }
                 }
 
-                var rowsProg = await fetchSheetByName('Programme');
+                var rowsProg = [];
+                try {
+                    rowsProg = await fetchSheetByName('Programme');
+                } catch(e) {
+                    console.error("Erreur onglet Programme", e);
+                }
+                
                 dataProgramme = [];
                 for (var r = 0; r < rowsProg.length; r++) {
                     var row = rowsProg[r];
@@ -176,34 +190,31 @@
                         dataProgramme.push({
                             Heure: colA,
                             Lieu_FR: colB,
-                            Description_FR: cleanValue(row.c[2]),
-                            Lieu_DE: cleanValue(row.c[3]),
-                            Description_DE: cleanValue(row.c[4])
+                            Description_FR: row.c[2] ? cleanValue(row.c[2]) : '',
+                            Lieu_DE: row.c[3] ? cleanValue(row.c[3]) : '',
+                            Description_DE: row.c[4] ? cleanValue(row.c[4]) : ''
                         });
                     }
                 }
 
+                dataUrgence = [];
+                var rowsUrg = [];
                 try {
-                    var rowsUrg = await fetchSheetByName('Urgence');
-                    dataUrgence = [];
-                    for (var r = 0; r < rowsUrg.length; r++) {
-                        var row = rowsUrg[r];
-                        if (row && row.c) {
-                            var nomUrg = cleanValue(row.c[0]);
-                            var telUrg = cleanValue(row.c[1]);
-                            if (nomUrg && nomUrg !== 'Nom') dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
-                        }
-                    }
+                    rowsUrg = await fetchSheetByName('Urgence');
                 } catch (e) {
-                    var rowsUrg = await fetchSheetByName('Urgences');
-                    dataUrgence = [];
-                    for (var r = 0; r < rowsUrg.length; r++) {
-                        var row = rowsUrg[r];
-                        if (row && row.c) {
-                            var nomUrg = cleanValue(row.c[0]);
-                            var telUrg = cleanValue(row.c[1]);
-                            if (nomUrg && nomUrg !== 'Nom') dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
-                        }
+                    try {
+                        rowsUrg = await fetchSheetByName('Urgences');
+                    } catch(err) {
+                        console.error("Erreur onglet Urgences", err);
+                    }
+                }
+                
+                for (var r = 0; r < rowsUrg.length; r++) {
+                    var row = rowsUrg[r];
+                    if (row && row.c) {
+                        var nomUrg = cleanValue(row.c[0]);
+                        var telUrg = cleanValue(row.c[1]);
+                        if (nomUrg && nomUrg !== 'Nom') dataUrgence.push({ Nom: nomUrg, Numéro: telUrg });
                     }
                 }
 
@@ -214,7 +225,7 @@
                 document.getElementById('loading').style.display = 'none';
             } catch (error) {
                 console.error(error);
-                document.getElementById('loading').innerText = "Erreur de chargement des données.";
+                document.getElementById('loading').innerText = "Erreur lors du traitement des données.";
             }
         }
 
@@ -290,7 +301,6 @@
             return d;
         }
 
-        // LOGIQUE SÉCURISÉE SANS EVALUATION DE CHAINES "ONERROR" FRAGILES
         function createTile(p) {
             var tile = document.createElement('div');
             tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[145px]";
@@ -301,7 +311,6 @@
             flagSpan.innerText = getDrapeau(p.Club);
             tile.appendChild(flagSpan);
 
-            // Grand conteneur d'images de taille maximale w-14 h-14
             var photosContainer = document.createElement('div');
             photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
             tile.appendChild(photosContainer);
@@ -309,12 +318,11 @@
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
+            // Affichage de la photo grand format w-14 h-14 avec fallback sécurisé
             if (p.Photo && p.Photo.startsWith('http')) {
                 var img1 = document.createElement('img');
                 img1.src = p.Photo;
                 img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10 bg-gray-100";
-                
-                // En cas de lien d'image brisé, le JavaScript remplace l'image dynamiquement de manière isolée
                 img1.onerror = function() {
                     if (img1.parentNode) {
                         img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
@@ -483,4 +491,44 @@
         function switchLanguage(lang) {
             currentLanguage = lang;
             document.getElementById('btn-lang-fr').className = lang === 'FR' ? 'px-4 py-1 bg-blue-900 text-white font-bold rounded-l text-sm' : 'px-4 py-1 bg-gray-200 text-gray-700 rounded-l text-sm';
-            document.getElementById('btn-lang-de').className = lang === 'DE' ? 'px-4 py-1 bg-blue
+            document.getElementById('btn-lang-de').className = lang === 'DE' ? 'px-4 py-1 bg-blue-900 text-white font-bold rounded-r text-sm' : 'px-4 py-1 bg-gray-200 text-gray-700 rounded-r text-sm';
+            renderProgramme();
+        }
+
+        function renderUrgence() {
+            var listEl = document.getElementById('urgence-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            
+            for (var i = 0; i < dataUrgence.length; i++) {
+                var u = dataUrgence[i];
+                var div = document.createElement('div');
+                div.className = "bg-white p-4 rounded-lg shadow-sm border border-red-100 my-2 flex justify-between items-center";
+                div.innerHTML = '<div>' +
+                        '<div class="font-bold text-gray-900 text-sm uppercase">' + (u.Nom || '') + '</div>' +
+                        '<div class="text-xs text-red-600 font-mono font-semibold mt-0.5">' + (u.Numéro || 'Pas de numéro') + '</div>' +
+                    '</div>' +
+                    (u.Numéro ? '<a href="tel:' + u.Numéro + '" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1">📞 Appeler</a>' : '');
+                listEl.appendChild(div);
+            }
+        }
+
+        function switchTab(tabId, e) {
+            var contents = document.querySelectorAll('.tab-content');
+            for (var i = 0; i < contents.length; i++) contents[i].classList.remove('active');
+            
+            var buttons = document.querySelectorAll('.tab-button');
+            for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
+            
+            document.getElementById(tabId).classList.add('active');
+            if (e && e.currentTarget) {
+                e.currentTarget.classList.add('active');
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            loadAllData();
+        });
+    </script>
+</body>
+</html>
