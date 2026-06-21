@@ -56,7 +56,7 @@
     </main>
 
     <div id="modal-details" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="closeModal()">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-transform" onclick="event.stopPropagation()">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden" onclick="event.stopPropagation()">
             <div class="bg-blue-950 p-4 text-white relative">
                 <span id="modal-flag" class="absolute top-3 right-3 text-xl"></span>
                 <h3 id="modal-title" class="font-bold text-base pr-8"></h3>
@@ -70,7 +70,7 @@
                     <div id="modal-role" class="flex items-center gap-2"></div>
                     <div id="modal-phone" class="pt-2"></div>
                 </div>
-                <button onclick="closeModal()" class="w-full mt-2 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-xs transition-colors">
+                <button onclick="closeModal()" class="w-full mt-2 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-xs">
                     Fermer la fiche
                 </button>
             </div>
@@ -275,49 +275,83 @@
             return header;
         }
 
+        // Créateurs de ronds de secours (badges initiales en HTML natif pur)
+        function createInitialBadge1(letter) {
+            var d = document.createElement('div');
+            d.className = "w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs border-2 border-white shadow-xs flex-shrink-0";
+            d.innerText = letter;
+            return d;
+        }
+
+        function createInitialBadge2(letter) {
+            var d = document.createElement('div');
+            d.className = "w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs border-2 border-white shadow-xs flex-shrink-0";
+            d.innerText = letter;
+            return d;
+        }
+
         function createTile(p) {
             var tile = document.createElement('div');
-            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[110px]";
+            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[115px]";
             tile.onclick = function() { openModal(p); };
+
+            // Drapeau en haut à droite
+            var flagSpan = document.createElement('span');
+            flagSpan.className = "absolute top-1 right-1 text-xs select-none";
+            flagSpan.innerText = getDrapeau(p.Club);
+            tile.appendChild(flagSpan);
+
+            // Conteneur de photos / badges (Effet trombinoscope de couples juxtaposés)
+            var photosContainer = document.createElement('div');
+            photosContainer.className = "flex -space-x-2.5 mt-1 mb-2 justify-center items-center h-10";
+            tile.appendChild(photosContainer);
 
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
 
-            // Création graphique des pastilles d'initiales en HTML/CSS pur (garanti sans bug de guillemets)
-            var placeholder1 = '<div class="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs">' + initial1 + '</div>';
-            var placeholder2 = '<div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs">' + initial2 + '</div>';
-
-            // Logique de construction du bloc photo
-            var photosHtml = '';
+            // Image 1 : Participant principal
             if (p.Photo && p.Photo.startsWith('http')) {
-                if (p.Conjoint) {
-                    photosHtml = '<div class="flex -space-x-3 mt-1 mb-2 justify-center">' +
-                        '<img src="' + p.Photo + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
-                        placeholder2 +
-                    '</div>';
-                } else {
-                    photosHtml = '<div class="my-1 justify-center flex">' +
-                        '<img src="' + p.Photo + '" class="w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
-                    '</div>';
-                }
+                var img1 = document.createElement('img');
+                img1.src = p.Photo;
+                img1.className = "w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10";
+                // En cas d'échec de chargement, on remplace l'image par son badge d'initiale en JS propre
+                img1.onerror = function() {
+                    if (img1.parentNode) {
+                        img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
+                    }
+                };
+                photosContainer.appendChild(img1);
             } else {
-                // Aucun lien valide : Utilisation directe des ronds d'initiales natifs
-                if (p.Conjoint) {
-                    photosHtml = '<div class="flex -space-x-3 mt-1 mb-2 justify-center">' + placeholder1 + placeholder2 + '</div>';
-                } else {
-                    photosHtml = '<div class="my-1 justify-center flex">' + placeholder1 + '</div>';
-                }
+                photosContainer.appendChild(createInitialBadge1(initial1));
             }
 
-            var flag = getDrapeau(p.Club);
-            var nomConjointHtml = p.Conjoint ? '<div class="text-[9px] text-gray-400 font-medium truncate max-w-full mt-0.5">👫 ' + p.Conjoint + '</div>' : '';
+            // Image 2 : Conjoint (Génère systématiquement son badge orange)
+            if (p.Conjoint) {
+                photosContainer.appendChild(createInitialBadge2(initial2));
+            }
 
-            tile.innerHTML = '<span class="absolute top-1 right-1 text-xs select-none">' + flag + '</span>' +
-                photosHtml +
-                '<div class="text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase">' + (p.Nom || '') + '</div>' +
-                '<div class="text-[10px] font-medium text-gray-600 leading-tight truncate w-full">' + (p.Prénom || '') + '</div>' +
-                nomConjointHtml;
+            // Textes descriptifs (Nom, Prénom, Conjoint sous forme de texte)
+            var textContainer = document.createElement('div');
+            textContainer.className = "w-full overflow-hidden";
 
+            var nomDiv = document.createElement('div');
+            nomDiv.className = "text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase";
+            nomDiv.innerText = p.Nom || '';
+            textContainer.appendChild(nomDiv);
+
+            var prenomDiv = document.createElement('div');
+            prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
+            prenomDiv.innerText = p.Prénom || '';
+            textContainer.appendChild(prenomDiv);
+
+            if (p.Conjoint) {
+                var conjointDiv = document.createElement('div');
+                conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
+                conjointDiv.innerText = "👫 " + p.Conjoint;
+                textContainer.appendChild(conjointDiv);
+            }
+
+            tile.appendChild(textContainer);
             return tile;
         }
 
@@ -329,31 +363,55 @@
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
 
-            var placeholder1 = '<div class="w-14 h-14 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg mx-auto shadow-sm">' + initial1 + '</div>';
-            var placeholder2 = '<div class="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm">' + initial2 + '</div>';
+            var modalPhotosContainer = document.getElementById('modal-photos-container');
+            modalPhotosContainer.innerHTML = '';
 
-            var imgHtml = '';
+            // Zone Photo Modale Participant
+            var pBox = document.createElement('div');
+            pBox.className = "text-center";
             if (p.Photo && p.Photo.startsWith('http')) {
-                imgHtml = '<div class="text-center">' +
-                    '<img src="' + p.Photo + '" class="w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto" onerror="this.outerHTML=\'' + placeholder1 + '\'">' +
-                    '<p class="text-[10px] text-gray-400 mt-1">Participant</p>' +
-                '</div>';
+                var mImg = document.createElement('img');
+                mImg.src = p.Photo;
+                mImg.className = "w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto";
+                mImg.onerror = function() {
+                    var b = createInitialBadge1(initial1);
+                    b.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                    mImg.parentNode.replaceChild(b, mImg);
+                };
+                pBox.appendChild(mImg);
             } else {
-                imgHtml = '<div class="text-center">' + placeholder1 + '<p class="text-[10px] text-gray-400 mt-1">Participant</p></div>';
+                var b = createInitialBadge1(initial1);
+                b.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                pBox.appendChild(b);
             }
+            var pLabel = document.createElement('p');
+            pLabel.className = "text-[10px] text-gray-400 mt-1";
+            pLabel.innerText = "Participant";
+            pBox.appendChild(pLabel);
+            modalPhotosContainer.appendChild(pBox);
 
+            // Zone Photo Modale Conjoint
             if (p.Conjoint) {
-                imgHtml += '<div class="text-center">' + placeholder2 + '<p class="text-[10px] text-gray-400 mt-1">Conjoint</p></div>';
+                var cBox = document.createElement('div');
+                cBox.className = "text-center";
+                var b2 = createInitialBadge2(initial2);
+                b2.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                cBox.appendChild(b2);
+                
+                var cLabel = document.createElement('p');
+                cLabel.className = "text-[10px] text-gray-400 mt-1";
+                cLabel.innerText = "Conjoint";
+                cBox.appendChild(cLabel);
+                modalPhotosContainer.appendChild(cBox);
             }
             
-            document.getElementById('modal-photos-container').innerHTML = imgHtml;
             document.getElementById('modal-conjoint').innerHTML = p.Conjoint ? '<strong>👫 Conjoint :</strong> ' + p.Conjoint : '';
             document.getElementById('modal-profession').innerHTML = p.Profession ? '<strong>💼 Profession :</strong> ' + p.Profession : '<strong>💼 Profession :</strong> Non renseignée';
             document.getElementById('modal-role').innerHTML = p.Role ? '<strong>🛡️ Rôle :</strong> <span class="text-amber-600 font-bold">' + p.Role + '</span>' : '<strong>🛡️ Rôle :</strong> Participant';
             
             var phoneEl = document.getElementById('modal-phone');
             if (p.Tél) {
-                phoneEl.innerHTML = '<a href="tel:' + p.Tél + '" class="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition-colors border border-emerald-200">🤙 Appeler le ' + p.Tél + '</a>';
+                phoneEl.innerHTML = '<a href="tel:' + p.Tél + '" class="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs border border-emerald-200">🤙 Appeler le ' + p.Tél + '</a>';
             } else {
                 phoneEl.innerHTML = '<div class="text-center text-xs text-gray-400 italic py-2">Pas de numéro de téléphone enregistré</div>';
             }
