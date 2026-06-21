@@ -98,17 +98,32 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
+        // Convertisseur d'URL amélioré et robuste
         function convertDriveUrl(url) {
-            if (!url || url.indexOf('drive.google.com') === -1) return '';
-            var match = url.match(/\/file\/d\/([^\/]+)/);
-            if (match && match[1]) {
-                return 'https://docs.google.com/uc?export=view&id=' + match[1];
+            if (!url) return '';
+            var urlStr = String(url);
+            if (urlStr.indexOf('drive.google.com') === -1) return urlStr;
+            
+            var id = '';
+            // Tente de matcher le format standard /file/d/ID/...
+            var matchD = urlStr.match(/\/d\/([^\/\?]+)/);
+            if (matchD && matchD[1]) {
+                id = matchD[1];
+            } else {
+                // Tente de matcher le format alternatif id=ID
+                var matchId = urlStr.match(/id=([^&]+)/);
+                if (matchId && matchId[1]) id = matchId[1];
             }
-            return '';
+            
+            if (id) {
+                return 'https://docs.google.com/uc?export=view&id=' + id;
+            }
+            return urlStr;
         }
 
         function cleanValue(cell) {
             if (!cell) return '';
+            // Si c'est une formule, on regarde s'il y a une valeur texte calculée
             if (cell.f) return cell.f; 
             if (cell.v !== null && cell.v !== undefined) {
                 var valStr = String(cell.v);
@@ -275,90 +290,83 @@
             return header;
         }
 
-        // Créateurs de ronds de secours (badges initiales en HTML natif pur)
         function createInitialBadge1(letter) {
             var d = document.createElement('div');
-            d.className = "w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs border-2 border-white shadow-xs flex-shrink-0";
+            d.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
             d.innerText = letter;
             return d;
         }
 
         function createInitialBadge2(letter) {
             var d = document.createElement('div');
-            d.className = "w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs border-2 border-white shadow-xs flex-shrink-0";
+            d.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
             d.innerText = letter;
             return d;
         }
 
         function createTile(p) {
-    var tile = document.createElement('div');
-    tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[140px]";
-    tile.onclick = function() { openModal(p); };
+            var tile = document.createElement('div');
+            tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[145px]";
+            tile.onclick = function() { openModal(p); };
 
-    // Drapeau en haut à droite
-    var flagSpan = document.createElement('span');
-    flagSpan.className = "absolute top-1 right-1 text-xs select-none";
-    flagSpan.innerText = getDrapeau(p.Club);
-    tile.appendChild(flagSpan);
+            // Drapeau
+            var flagSpan = document.createElement('span');
+            flagSpan.className = "absolute top-1 right-1 text-xs select-none";
+            flagSpan.innerText = getDrapeau(p.Club);
+            tile.appendChild(flagSpan);
 
-    // CONTENEUR PHOTOS AGRANDI (w-14 / h-14)
-    var photosContainer = document.createElement('div');
-    photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
-    tile.appendChild(photosContainer);
+            // Conteneur de photos de taille maximale (w-14 h-14)
+            var photosContainer = document.createElement('div');
+            photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
+            tile.appendChild(photosContainer);
 
-    var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
-    var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
+            var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
+            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
-    // 1ère Photo : Participant Principal (Maximisé)
-    if (p.Photo && p.Photo.startsWith('http')) {
-        var img1 = document.createElement('img');
-        img1.src = p.Photo;
-        img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-sm flex-shrink-0 z-10 bg-slate-100";
-        img1.onerror = function() {
-            if (img1.parentNode) {
-                var badge = createInitialBadge1(initial1);
-                badge.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-10";
-                img1.parentNode.replaceChild(badge, img1);
+            // Image Participant principal
+            if (p.Photo && p.Photo.startsWith('http')) {
+                var img1 = document.createElement('img');
+                img1.src = p.Photo;
+                img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10 bg-gray-100";
+                img1.onerror = function() {
+                    if (img1.parentNode) {
+                        img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
+                    }
+                };
+                photosContainer.appendChild(img1);
+            } else {
+                photosContainer.appendChild(createInitialBadge1(initial1));
             }
-        };
-        photosContainer.appendChild(img1);
-    } else {
-        var badge = createInitialBadge1(initial1);
-        badge.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-10";
-        photosContainer.appendChild(badge);
-    }
 
-    // 2ème Photo : Conjoint (Maximisé)
-    if (p.Conjoint) {
-        var badge2 = createInitialBadge2(initial2 || '👫');
-        badge2.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm flex-shrink-0 z-0";
-        photosContainer.appendChild(badge2);
-    }
+            // Image Conjoint
+            if (p.Conjoint) {
+                photosContainer.appendChild(createInitialBadge2(initial2 || '👫'));
+            }
 
-    // Zone de textes descriptifs
-    var textContainer = document.createElement('div');
-    textContainer.className = "w-full overflow-hidden";
+            // Textes
+            var textContainer = document.createElement('div');
+            textContainer.className = "w-full overflow-hidden";
 
-    var nomDiv = document.createElement('div');
-    nomDiv.className = "text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase";
-    nomDiv.innerText = p.Nom || '';
-    textContainer.appendChild(nomDiv);
+            var nomDiv = document.createElement('div');
+            nomDiv.className = "text-[11px] font-bold text-gray-950 leading-tight truncate w-full uppercase";
+            nomDiv.innerText = p.Nom || '';
+            textContainer.appendChild(nomDiv);
 
-    var prenomDiv = document.createElement('div');
-    prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
-    prenomDiv.innerText = p.Prénom || '';
-    textContainer.appendChild(prenomDiv);
+            var prenomDiv = document.createElement('div');
+            prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
+            prenomDiv.innerText = p.Prénom || '';
+            textContainer.appendChild(prenomDiv);
 
-    if (p.Conjoint) {
-        var conjointDiv = document.createElement('div');
-        conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
-        conjointDiv.innerText = "👫 " + p.Conjoint;
-        textContainer.appendChild(conjointDiv);
-    }
+            if (p.Conjoint) {
+                var conjointDiv = document.createElement('div');
+                conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
+                conjointDiv.innerText = "👫 " + p.Conjoint;
+                textContainer.appendChild(conjointDiv);
+            }
 
-    tile.appendChild(textContainer);
-    return tile;
-}
+            tile.appendChild(textContainer);
+            return tile;
+        }
 
         function openModal(p) {
             document.getElementById('modal-title').innerText = (p.Prénom || '') + ' ' + (p.Nom || '');
@@ -366,27 +374,26 @@
             document.getElementById('modal-flag').innerText = getDrapeau(p.Club);
 
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
-            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '👫';
+            var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
             var modalPhotosContainer = document.getElementById('modal-photos-container');
             modalPhotosContainer.innerHTML = '';
 
-            // Zone Photo Modale Participant
             var pBox = document.createElement('div');
             pBox.className = "text-center";
             if (p.Photo && p.Photo.startsWith('http')) {
                 var mImg = document.createElement('img');
                 mImg.src = p.Photo;
-                mImg.className = "w-14 h-14 rounded-full border border-gray-200 object-cover shadow-sm mx-auto";
+                mImg.className = "w-16 h-16 rounded-full border border-gray-200 object-cover shadow-sm mx-auto bg-gray-50";
                 mImg.onerror = function() {
                     var b = createInitialBadge1(initial1);
-                    b.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                    b.className = "w-16 h-16 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
                     mImg.parentNode.replaceChild(b, mImg);
                 };
                 pBox.appendChild(mImg);
             } else {
                 var b = createInitialBadge1(initial1);
-                b.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                b.className = "w-16 h-16 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
                 pBox.appendChild(b);
             }
             var pLabel = document.createElement('p');
@@ -395,12 +402,11 @@
             pBox.appendChild(pLabel);
             modalPhotosContainer.appendChild(pBox);
 
-            // Zone Photo Modale Conjoint
             if (p.Conjoint) {
                 var cBox = document.createElement('div');
                 cBox.className = "text-center";
-                var b2 = createInitialBadge2(initial2);
-                b2.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg mx-auto shadow-sm";
+                var b2 = createInitialBadge2(initial2 || '👫');
+                b2.className = "w-16 h-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
                 cBox.appendChild(b2);
                 
                 var cLabel = document.createElement('p');
@@ -426,6 +432,7 @@
             m.classList.add('flex');
         }
 
+        // --- Fonctions de navigation secondaires identiques ---
         function closeModal() {
             var m = document.getElementById('modal-details');
             m.classList.remove('flex');
@@ -522,8 +529,8 @@
             for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
             
             document.getElementById(tabId).classList.add('active');
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
+            if (window.event && window.event.currentTarget) {
+                window.event.currentTarget.classList.add('active');
             }
         }
 
