@@ -263,7 +263,7 @@
             } else if (currentSort === 'groupe') {
                 var groups = {};
                 for (var i = 0; i < sorted.length; i++) {
-                    var g = sorted[i].Role || 'Participant';
+                    var g = sorted[i].Groupe || 'Sans Groupe';
                     if (!groups[g]) groups[g] = [];
                     groups[g].push(sorted[i]);
                 }
@@ -337,7 +337,19 @@
             }
 
             if (p.Conjoint) {
-                photosContainer.appendChild(createInitialBadge2(initial2 || '👫'));
+                if (p.Photo_Conjoint && p.Photo_Conjoint.startsWith('http')) {
+                    var img2 = document.createElement('img');
+                    img2.src = p.Photo_Conjoint;
+                    img2.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-0 bg-gray-100";
+                    img2.onerror = function() {
+                        if (img2.parentNode) {
+                            img2.parentNode.replaceChild(createInitialBadge2(initial2 || '👫'), img2);
+                        }
+                    };
+                    photosContainer.appendChild(img2);
+                } else {
+                    photosContainer.appendChild(createInitialBadge2(initial2 || '👫'));
+                }
             }
 
             var textContainer = document.createElement('div');
@@ -380,34 +392,47 @@
             if (p.Photo && p.Photo.startsWith('http')) {
                 var mImg = document.createElement('img');
                 mImg.src = p.Photo;
-                mImg.className = "w-16 h-16 rounded-full border border-gray-200 object-cover shadow-sm mx-auto bg-gray-50";
+                mImg.className = "w-20 h-20 rounded-full border border-gray-200 object-cover shadow-sm mx-auto bg-gray-50 block";
+                mImg.style.cssText = "width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;";
                 mImg.onerror = function() {
                     var b = createInitialBadge1(initial1);
-                    b.className = "w-16 h-16 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
+                    b.className = "w-20 h-20 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
                     mImg.parentNode.replaceChild(b, mImg);
                 };
                 pBox.appendChild(mImg);
             } else {
                 var b = createInitialBadge1(initial1);
-                b.className = "w-16 h-16 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
+                b.className = "w-20 h-20 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
                 pBox.appendChild(b);
             }
             var pLabel = document.createElement('p');
             pLabel.className = "text-[10px] text-gray-400 mt-1";
-            pLabel.innerText = "Participant";
+            pLabel.innerText = p.Prénom || 'Participant';
             pBox.appendChild(pLabel);
             modalPhotosContainer.appendChild(pBox);
 
             if (p.Conjoint) {
                 var cBox = document.createElement('div');
                 cBox.className = "text-center";
-                var b2 = createInitialBadge2(initial2 || '👫');
-                b2.className = "w-16 h-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
-                cBox.appendChild(b2);
-                
+                if (p.Photo_Conjoint && p.Photo_Conjoint.startsWith('http')) {
+                    var cImg = document.createElement('img');
+                    cImg.src = p.Photo_Conjoint;
+                    cImg.className = "w-20 h-20 rounded-full border border-gray-200 object-cover shadow-sm mx-auto bg-gray-50 block";
+                    cImg.style.cssText = "width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;";
+                    cImg.onerror = function() {
+                        var b2 = createInitialBadge2(initial2 || '👫');
+                        b2.className = "w-20 h-20 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
+                        cImg.parentNode.replaceChild(b2, cImg);
+                    };
+                    cBox.appendChild(cImg);
+                } else {
+                    var b2 = createInitialBadge2(initial2 || '👫');
+                    b2.className = "w-20 h-20 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl mx-auto shadow-sm";
+                    cBox.appendChild(b2);
+                }
                 var cLabel = document.createElement('p');
                 cLabel.className = "text-[10px] text-gray-400 mt-1";
-                cLabel.innerText = "Conjoint";
+                cLabel.innerText = p.Conjoint;
                 cBox.appendChild(cLabel);
                 modalPhotosContainer.appendChild(cBox);
             }
