@@ -98,32 +98,18 @@
         var currentLanguage = 'FR';
         var currentSort = 'alpha';
 
-        // Convertisseur d'URL amélioré et robuste
+        // RETOUR À LA LOGIQUE DE CONVERSION DE LA PREMIÈRE VERSION
         function convertDriveUrl(url) {
-            if (!url) return '';
-            var urlStr = String(url);
-            if (urlStr.indexOf('drive.google.com') === -1) return urlStr;
-            
-            var id = '';
-            // Tente de matcher le format standard /file/d/ID/...
-            var matchD = urlStr.match(/\/d\/([^\/\?]+)/);
-            if (matchD && matchD[1]) {
-                id = matchD[1];
-            } else {
-                // Tente de matcher le format alternatif id=ID
-                var matchId = urlStr.match(/id=([^&]+)/);
-                if (matchId && matchId[1]) id = matchId[1];
+            if (!url || url.indexOf('drive.google.com') === -1) return '';
+            var match = url.match(/\/file\/d\/([^\/]+)/);
+            if (match && match[1]) {
+                return 'https://docs.google.com/uc?export=view&id=' + match[1];
             }
-            
-            if (id) {
-                return 'https://docs.google.com/uc?export=view&id=' + id;
-            }
-            return urlStr;
+            return '';
         }
 
         function cleanValue(cell) {
             if (!cell) return '';
-            // Si c'est une formule, on regarde s'il y a une valeur texte calculée
             if (cell.f) return cell.f; 
             if (cell.v !== null && cell.v !== undefined) {
                 var valStr = String(cell.v);
@@ -292,30 +278,30 @@
 
         function createInitialBadge1(letter) {
             var d = document.createElement('div');
-            d.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
+            d.className = "w-14 h-14 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0 z-10";
             d.innerText = letter;
             return d;
         }
 
         function createInitialBadge2(letter) {
             var d = document.createElement('div');
-            d.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
+            d.className = "w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0 z-0";
             d.innerText = letter;
             return d;
         }
 
+        // LOGIQUE SÉCURISÉE SANS EVALUATION DE CHAINES "ONERROR" FRAGILES
         function createTile(p) {
             var tile = document.createElement('div');
             tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[145px]";
             tile.onclick = function() { openModal(p); };
 
-            // Drapeau
             var flagSpan = document.createElement('span');
             flagSpan.className = "absolute top-1 right-1 text-xs select-none";
             flagSpan.innerText = getDrapeau(p.Club);
             tile.appendChild(flagSpan);
 
-            // Conteneur de photos de taille maximale (w-14 h-14)
+            // Grand conteneur d'images de taille maximale w-14 h-14
             var photosContainer = document.createElement('div');
             photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
             tile.appendChild(photosContainer);
@@ -323,11 +309,12 @@
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
-            // Image Participant principal
             if (p.Photo && p.Photo.startsWith('http')) {
                 var img1 = document.createElement('img');
                 img1.src = p.Photo;
                 img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10 bg-gray-100";
+                
+                // En cas de lien d'image brisé, le JavaScript remplace l'image dynamiquement de manière isolée
                 img1.onerror = function() {
                     if (img1.parentNode) {
                         img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
@@ -338,12 +325,10 @@
                 photosContainer.appendChild(createInitialBadge1(initial1));
             }
 
-            // Image Conjoint
             if (p.Conjoint) {
                 photosContainer.appendChild(createInitialBadge2(initial2 || '👫'));
             }
 
-            // Textes
             var textContainer = document.createElement('div');
             textContainer.className = "w-full overflow-hidden";
 
@@ -432,7 +417,6 @@
             m.classList.add('flex');
         }
 
-        // --- Fonctions de navigation secondaires identiques ---
         function closeModal() {
             var m = document.getElementById('modal-details');
             m.classList.remove('flex');
@@ -499,44 +483,4 @@
         function switchLanguage(lang) {
             currentLanguage = lang;
             document.getElementById('btn-lang-fr').className = lang === 'FR' ? 'px-4 py-1 bg-blue-900 text-white font-bold rounded-l text-sm' : 'px-4 py-1 bg-gray-200 text-gray-700 rounded-l text-sm';
-            document.getElementById('btn-lang-de').className = lang === 'DE' ? 'px-4 py-1 bg-blue-900 text-white font-bold rounded-r text-sm' : 'px-4 py-1 bg-gray-200 text-gray-700 rounded-r text-sm';
-            renderProgramme();
-        }
-
-        function renderUrgence() {
-            var listEl = document.getElementById('urgence-list');
-            if (!listEl) return;
-            listEl.innerHTML = '';
-            
-            for (var i = 0; i < dataUrgence.length; i++) {
-                var u = dataUrgence[i];
-                var div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-lg shadow-sm border border-red-100 my-2 flex justify-between items-center";
-                div.innerHTML = '<div>' +
-                        '<div class="font-bold text-gray-900 text-sm uppercase">' + (u.Nom || '') + '</div>' +
-                        '<div class="text-xs text-red-600 font-mono font-semibold mt-0.5">' + (u.Numéro || 'Pas de numéro') + '</div>' +
-                    '</div>' +
-                    (u.Numéro ? '<a href="tel:' + u.Numéro + '" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1">📞 Appeler</a>' : '');
-                listEl.appendChild(div);
-            }
-        }
-
-        function switchTab(tabId) {
-            var contents = document.querySelectorAll('.tab-content');
-            for (var i = 0; i < contents.length; i++) contents[i].classList.remove('active');
-            
-            var buttons = document.querySelectorAll('.tab-button');
-            for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('active');
-            
-            document.getElementById(tabId).classList.add('active');
-            if (window.event && window.event.currentTarget) {
-                window.event.currentTarget.classList.add('active');
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            loadAllData();
-        });
-    </script>
-</body>
-</html>
+            document.getElementById('btn-lang-de').className = lang === 'DE' ? 'px-4 py-1 bg-blue
