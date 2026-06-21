@@ -253,7 +253,7 @@
                     groups[c].push(sorted[i]);
                 }
                 for (var key in groups) {
-                    container.appendChild(createGroupHeader(key));
+                    container.appendChild(createClubHeader(key));
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                     for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j]));
@@ -268,7 +268,7 @@
                     groups[g].push(sorted[i]);
                 }
                 for (var key in groups) {
-                    container.appendChild(createGroupHeader(key));
+                    container.appendChild(createGroupeHeader(key));
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
                     for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j]));
@@ -287,6 +287,20 @@
             var header = document.createElement('h3');
             header.className = "text-xs font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
             header.innerText = title;
+            return header;
+        }
+
+        function createClubHeader(clubName) {
+            var header = document.createElement('h3');
+            header.className = "text-xs font-bold text-blue-900 bg-blue-50 p-2 mt-4 rounded uppercase tracking-wider";
+            header.innerText = getDrapeau(clubName) + ' ' + clubName;
+            return header;
+        }
+
+        function createGroupeHeader(groupeName) {
+            var header = document.createElement('h3');
+            header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
+            header.innerText = 'Groupe ' + groupeName;
             return header;
         }
 
@@ -309,51 +323,59 @@
             tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden min-h-[145px]";
             tile.onclick = function() { openModal(p); };
 
-            // Drapeau + rôle en haut à droite
+            // Drapeau + rôle en haut à droite, rôle en dessous du drapeau
             var topRight = document.createElement('div');
-            topRight.className = "absolute top-1 right-1 flex flex-col items-end gap-0.5";
+            topRight.className = "absolute top-1 right-1 flex flex-col items-end gap-0.5 max-w-[45px]";
             var flagSpan = document.createElement('span');
             flagSpan.className = "text-xs select-none";
             flagSpan.innerText = getDrapeau(p.Club);
             topRight.appendChild(flagSpan);
             if (p.Role) {
                 var roleSpan = document.createElement('span');
-                roleSpan.className = "text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded leading-tight text-right";
+                roleSpan.className = "text-[7px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded leading-tight text-right break-words";
+                roleSpan.style.cssText = "word-break:break-word;white-space:normal;";
                 roleSpan.innerText = p.Role;
                 topRight.appendChild(roleSpan);
             }
             tile.appendChild(topRight);
 
+            // Photos côte à côte sans chevauchement
             var photosContainer = document.createElement('div');
-            photosContainer.className = "flex -space-x-4 mt-2 mb-3 justify-center items-center h-14 w-full";
+            photosContainer.className = "flex gap-1 mt-2 mb-2 justify-center items-center w-full";
             tile.appendChild(photosContainer);
 
             var initial1 = p.Prénom ? p.Prénom.charAt(0) : '?';
             var initial2 = p.Conjoint ? p.Conjoint.charAt(0) : '';
 
+            var photoSize = p.Conjoint ? "w-10 h-10" : "w-14 h-14";
+
             if (p.Photo && p.Photo.startsWith('http')) {
                 var img1 = document.createElement('img');
                 img1.src = p.Photo;
-                img1.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-10 bg-gray-100";
+                img1.className = photoSize + " rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 bg-gray-100";
                 img1.onerror = function() {
                     if (img1.parentNode) img1.parentNode.replaceChild(createInitialBadge1(initial1), img1);
                 };
                 photosContainer.appendChild(img1);
             } else {
-                photosContainer.appendChild(createInitialBadge1(initial1));
+                var b1 = createInitialBadge1(initial1);
+                if (p.Conjoint) b1.className = "w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
+                photosContainer.appendChild(b1);
             }
 
             if (p.Conjoint) {
                 if (p.Photo_Conjoint && p.Photo_Conjoint.startsWith('http')) {
                     var img2 = document.createElement('img');
                     img2.src = p.Photo_Conjoint;
-                    img2.className = "w-14 h-14 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 z-0 bg-gray-100";
+                    img2.className = "w-10 h-10 rounded-full border-2 border-white object-cover shadow-xs flex-shrink-0 bg-gray-100";
                     img2.onerror = function() {
-                        if (img2.parentNode) img2.parentNode.replaceChild(createInitialBadge2(initial2 || '👫'), img2);
+                        if (img2.parentNode) img2.parentNode.replaceChild(createInitialBadge2(initial2 || '?'), img2);
                     };
                     photosContainer.appendChild(img2);
                 } else {
-                    photosContainer.appendChild(createInitialBadge2(initial2 || '👫'));
+                    var b2 = createInitialBadge2(initial2 || '?');
+                    b2.className = "w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm border-2 border-white shadow-xs flex-shrink-0";
+                    photosContainer.appendChild(b2);
                 }
             }
 
@@ -365,17 +387,11 @@
             nomDiv.innerText = p.Nom || '';
             textContainer.appendChild(nomDiv);
 
+            // Prénoms sur une seule ligne : "Marie-Claire & Antoine" ou juste "Marie-Claire"
             var prenomDiv = document.createElement('div');
             prenomDiv.className = "text-[10px] font-medium text-gray-600 leading-tight truncate w-full mt-0.5";
-            prenomDiv.innerText = p.Prénom || '';
+            prenomDiv.innerText = p.Conjoint ? (p.Prénom || '') + ' & ' + p.Conjoint : (p.Prénom || '');
             textContainer.appendChild(prenomDiv);
-
-            if (p.Conjoint) {
-                var conjointDiv = document.createElement('div');
-                conjointDiv.className = "text-[9px] text-gray-400 font-medium truncate max-w-full mt-1 bg-gray-50 py-0.5 rounded-sm";
-                conjointDiv.innerText = "👫 " + p.Conjoint;
-                textContainer.appendChild(conjointDiv);
-            }
 
             if (p.Groupe) {
                 var groupeDiv = document.createElement('div');
