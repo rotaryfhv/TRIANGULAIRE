@@ -414,8 +414,10 @@
 
             if (p.Groupe) {
                 var groupeDiv = document.createElement('div');
-                groupeDiv.className = "text-[8px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded mt-1 truncate w-full";
-                groupeDiv.innerText = "Gr. " + p.Groupe;
+                var gc = getGroupeColor(p.Groupe);
+                groupeDiv.className = "text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 truncate w-full";
+                groupeDiv.style.cssText = "background:" + gc.bg + ";color:" + gc.text + ";";
+                groupeDiv.innerText = "Groupe " + p.Groupe;
                 textContainer.appendChild(groupeDiv);
             }
 
@@ -423,7 +425,26 @@
             return tile;
         }
 
-        function createFallback(letter, isConjoint) {
+        var GROUPE_COLORS = [
+            { bg: '#1e3a5f', text: '#ffffff' }, // bleu marine
+            { bg: '#7c3aed', text: '#ffffff' }, // violet
+            { bg: '#b91c1c', text: '#ffffff' }, // rouge
+            { bg: '#047857', text: '#ffffff' }, // vert
+            { bg: '#b45309', text: '#ffffff' }, // ambre foncé
+            { bg: '#0e7490', text: '#ffffff' }, // cyan foncé
+            { bg: '#be185d', text: '#ffffff' }, // rose
+            { bg: '#374151', text: '#ffffff' }, // gris ardoise
+        ];
+        var groupeColorMap = {};
+        var groupeColorIndex = 0;
+
+        function getGroupeColor(groupe) {
+            if (!groupeColorMap[groupe]) {
+                groupeColorMap[groupe] = GROUPE_COLORS[groupeColorIndex % GROUPE_COLORS.length];
+                groupeColorIndex++;
+            }
+            return groupeColorMap[groupe];
+        }
             var d = document.createElement('div');
             var bg = isConjoint ? "background:#fff7ed;color:#ea580c;" : "background:#e2e8f0;color:#64748b;";
             d.className = "w-[48%] aspect-square rounded-lg flex items-center justify-center font-bold text-xl";
