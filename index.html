@@ -290,13 +290,21 @@
                     if (!groups[g]) groups[g] = [];
                     groups[g].push(sorted[i]);
                 }
-                for (var key in groups) {
-                    container.appendChild(createGroupeHeader(key));
-                    var grid = createGridElement();
-                    groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j], false, true));
-                    container.appendChild(grid);
-                }
+Object.keys(groups)
+    .sort(function(a, b) {
+        return a.localeCompare(b);
+    })
+    .forEach(function(key) {
+        container.appendChild(createGroupeHeader(key));
+        var grid = createGridElement();
+        groups[key].sort(function(a, b) {
+            return (a.Nom || '').localeCompare(b.Nom || '');
+        });
+        for (var j = 0; j < groups[key].length; j++) {
+            grid.appendChild(createTile(groups[key][j], false, true));
+        }
+        container.appendChild(grid);
+    });
             }
         }
 
