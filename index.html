@@ -294,7 +294,7 @@
                     container.appendChild(createGroupeHeader(key));
                     var grid = createGridElement();
                     groups[key].sort(function(a, b) { return (a.Nom || '').localeCompare(b.Nom || ''); });
-                    for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j]));
+                    for (var j = 0; j < groups[key].length; j++) grid.appendChild(createTile(groups[key][j], false, true));
                     container.appendChild(grid);
                 }
             }
@@ -322,7 +322,9 @@
 
         function createGroupeHeader(groupeName) {
             var header = document.createElement('h3');
-            header.className = "text-xs font-bold text-white bg-blue-950 p-2 mt-4 rounded uppercase tracking-wider";
+            var gc = getGroupeColor(groupeName);
+            header.className = "text-xs font-bold p-2 mt-4 rounded uppercase tracking-wider";
+            header.style.cssText = "background:" + gc.bg + ";color:" + gc.text + ";";
             header.innerText = 'Groupe ' + groupeName;
             return header;
         }
@@ -341,7 +343,7 @@
             return d;
         }
 
-        function createTile(p, hideDrapeau) {
+        function createTile(p, hideDrapeau, hideGroupe) {
             var tile = document.createElement('div');
             tile.className = "bg-white p-2 rounded-xl shadow-xs border border-gray-100 flex flex-col items-center text-center relative cursor-pointer hover:shadow-md transition-all active:scale-95 overflow-hidden";
             tile.onclick = function() { openModal(p); };
@@ -412,7 +414,7 @@
             prenomDiv.innerText = p.Conjoint ? (p.Prénom || '') + ' & ' + p.Conjoint : (p.Prénom || '');
             textContainer.appendChild(prenomDiv);
 
-            if (p.Groupe) {
+            if (p.Groupe && !hideGroupe) {
                 var groupeDiv = document.createElement('div');
                 var gc = getGroupeColor(p.Groupe);
                 groupeDiv.className = "text-[8px] font-bold px-1.5 py-0.5 rounded mt-1 truncate w-full";
